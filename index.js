@@ -20,6 +20,7 @@ const YAML = require('yamljs');
 const swaggerDocument = YAML.load('api-docs.yml');
 const {findOrCreateUser,saveUserTokens} = require('./userManagement'); 
 const cors = require('cors');
+const { calendar } = require('googleapis/build/src/apis/calendar');
 const corsOptions = {
   origin: '*', // Allow all origins
   optionsSuccessStatus: 200 
@@ -192,51 +193,37 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 //Insere o evento no calendario do utilizador 
-app.patch('/v1/:userId/events', apiKeyMiddleware,async (req, res) => {
-
+app.patch('/v1/:userId/events', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
   const { eventId, summary, location, description, start, end } = req.body;
 
   try {
-    // First, check if the user has a calendar
     const calendarsResult = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendarsResult.length === 0) {
+    console.log(calendarsResult[0]);
+    if (calendarsResult[0].length=== 0) {
       return res.status(404).send('Calendar not found for the given user ID.');
     }
-    const calendarId = calendarsResult[0].id;
-
-    // Check if the event already exists for the user
+    const calendarId = calendarsResult[0][0].id;
+    console.log(calendarId);
+    
     const eventExistResult = await db.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    if (eventExistResult.length > 0) {
-      // The event exists, so update it
-      await db.query(
+    console.log(eventExistResult); // Add this to check the output
+    if (eventExistResult[0] && eventExistResult[0].length > 0) {
+      const updateResult = await db.query(
         'UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE id = ? AND calendarId = ?',
-        [
-          summary,
-          location,
-          description,
-          start.dateTime,
-          end.dateTime,
-          start.timeZone, // Assuming the same timeZone for both start and end
-          eventId,
-          calendarId
-        ]
+        [summary, location, description, start.dateTime, end.dateTime, start.timeZone, eventId, calendarId]
       );
+
+      // Check if the update was successful
+      if (updateResult.affectedRows === 0) {
+        return res.status(404).send('Event update failed.');
+      }
+
       res.json({ message: "Event updated successfully", eventId: eventId });
     } else {
-      // The event does not exist, so insert it with the provided ID
       await db.query(
         'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [
-          eventId,
-          calendarId,
-          summary,
-          location,
-          description,
-          start.dateTime,
-          end.dateTime,
-          start.timeZone // Assuming the same timeZone for both start and end
-        ]
+        [eventId, calendarId, summary, location, description, start.dateTime, end.dateTime, start.timeZone]
       );
       res.status(201).json({ message: "Event added successfully", eventId: eventId });
     }
@@ -248,17 +235,16 @@ app.patch('/v1/:userId/events', apiKeyMiddleware,async (req, res) => {
 
 
 
-
 app.get('/v1/:userId', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
 
   try {
     // First, ensure the user has a calendar
     const calendars = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendars.length === 0) {
+    if (calendars[0].length=== 0) {
       return res.status(404).send('Calendar not found for the given user ID.');
     }
-    const calendarId = calendars[0].id;
+    const calendarId = calendars[0][0].id;
 
     // Query to select events from the database
     const events = await db.query('SELECT * FROM events WHERE calendarId = ?', [calendarId]);
@@ -269,7 +255,7 @@ app.get('/v1/:userId', apiKeyMiddleware, async (req, res) => {
     }
 
     // Respond with the events
-    res.json(events);
+    res.json(events[0]);
   } catch (error) {
     console.error('Failed to retrieve events:', error);
     res.status(500).send('Failed to retrieve events');

@@ -214,7 +214,8 @@ paths:
           description: Internal server error.
 components:
   securitySchemes:
-    ApiKeyAuth:
+    ApiKeyAuth:  # This is an arbitrary name for the security scheme
       type: apiKey
       in: header
-      name: SERVICE-API-KEY
+      name: x-api-key  # This should match the header name used in your requests
+
