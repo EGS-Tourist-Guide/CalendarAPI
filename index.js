@@ -2,7 +2,8 @@
 //http://localhost:3000/
 //http://localhost:3000/api-docs
 
-
+//lsof -i :3000
+//kill -9 12345
 //exemplos teste endpoint create calendar
 //curl -X POST http://localhost:3000/v1/1/
 //  > -H "Content-Type: application/json" \
@@ -29,10 +30,10 @@ const {OAuth2} = google.auth;
 
 const app = express();
 const port = 3000;
+app.use(express.static(__dirname + '/public'));
+
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));app.use(cors(corsOptions));
-
-
-
 app.use(express.json());
 
 
@@ -78,10 +79,20 @@ async function fetchUserInfo(accessToken) {
 }
 
 
+const apiKeyMiddleware = (req, res, next) => {
+    const apiKey = req.headers['x-api-key']; // Assuming the API key is sent in the header
+    const validApiKey = process.env.VALID_API_KEY; // Your valid API key stored in an environment variable
 
+    if (!apiKey || apiKey !== validApiKey) {
+        return res.status(401).json({ message: 'Invalid API Key' });
+    }
+
+    next(); 
+};
 
 // Redirect to Google's OAuth 2.0 server
 app.get('/v1/login', (req, res) => {
+  //console.log(`Current directory: ${process.cwd()}`);
   // This method generates the URL to which the user will be redirected for authentication.
   //this code sets up a route that initiates the OAuth 2.0 authentication process with 
   try {
@@ -123,55 +134,56 @@ app.get('/oauth2callback', async (req, res) => {
       name: userInfo.name,
   });
 
-  // Step 2: Save OAuth tokens to `storeDB` table
-  await saveUserTokens({
-      userId: user.id, // ID from `users` table
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      tokenExpiry: new Date(tokens.expiry_date).toISOString().slice(0, 19).replace('T', ' '),
+  // // Step 2: Save OAuth tokens to `storeDB` table
+  // await saveUserTokens({
+  //     userId: user.id, // ID from `users` table
+  //     accessToken: tokens.access_token,
+  //     refreshToken: tokens.refresh_token,
+  //     tokenExpiry: new Date(tokens.expiry_date).toISOString().slice(0, 19).replace('T', ' '),
       
-  });
+  // });
 
-  // const userToken = jwt.sign(
-  //   { userId: user.id, email: user.email },
-  //   process.env.JWT_SECRET,
-  //   { expiresIn: '24h' } // Token expires in 24 hours; adjust as needed
-  // );
+    // Instead of sending the user data back as JSON, redirect to an intermediate page
+    // The page will then handle redirecting back to the app with the necessary data
+    // Example: Redirecting to an intermediate page with user's ID as a parameter
+    const appRedirectURL = `/auth-success.html?userId=${user.id}`;
+    res.redirect(appRedirectURL);
 
-
-    res.json({ message: 'Authentication successful!', token: user.id });
+    //res.json({ message: 'Authentication successful!', token: user.id });
 });
 
 
-
 //Create a new calendar for the user
-app.post('/v1/:userId/', async (req, res) => {
+app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
-  const { name, description } = req.body; //description for the calendar
+  const { name, description } = req.body;
 
   try {
-    // First, check if the user already has a calendar
-    const existingCalendars = await db.query('SELECT * FROM calendars WHERE userId = ?', [userId]);
+    // Corrected query to check if the user already has a calendar
+    const [existingCalendars] = await db.query('SELECT * FROM calendars WHERE userId = ?', [userId]);
+
+    // Log the actual query result for debugging
+    //console.log(existingCalendars);
 
     if (existingCalendars.length > 0) {
-      // User already has a calendar, so decide how you want to handle this
-      // For example, you could return a message indicating that a calendar already exists
+      // Correctly handle the case where a calendar exists
       return res.status(400).json({
         message: "User already has a calendar.",
       });
     }
 
-    // If no existing calendar for the user, proceed to create a new one
-    const result = await db.query('INSERT INTO calendars (userId, name, description) VALUES (?, ?, ?)', [userId, name, description]);
+    // Proceed to insert a new calendar if none exists
+    const insertResult = await db.query('INSERT INTO calendars (userId, name) VALUES (?, ?)', [userId, name]);
 
-    // Retrieve the ID of the newly created calendar
-    const calendarId = result.insertId;
+    // Use insertResult to get the new calendar ID
+    const calendarId = insertResult.insertId;
 
-    // Respond with success message and the created calendar's ID
+    // Respond with the success message and the new calendar's ID
     res.status(201).json({
       message: "Calendar created successfully",
       calendarId: calendarId,
     });
+
   } catch (error) {
     console.error('Failed to create calendar:', error);
     res.status(500).send('Failed to create calendar');
@@ -179,9 +191,90 @@ app.post('/v1/:userId/', async (req, res) => {
 });
 
 
+//Insere o evento no calendario do utilizador 
+app.patch('/v1/:userId/events', apiKeyMiddleware,async (req, res) => {
+
+  const userId = req.params.userId;
+  const { eventId, summary, location, description, start, end } = req.body;
+
+  try {
+    // First, check if the user has a calendar
+    const calendarsResult = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+    if (calendarsResult.length === 0) {
+      return res.status(404).send('Calendar not found for the given user ID.');
+    }
+    const calendarId = calendarsResult[0].id;
+
+    // Check if the event already exists for the user
+    const eventExistResult = await db.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+    if (eventExistResult.length > 0) {
+      // The event exists, so update it
+      await db.query(
+        'UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE id = ? AND calendarId = ?',
+        [
+          summary,
+          location,
+          description,
+          start.dateTime,
+          end.dateTime,
+          start.timeZone, // Assuming the same timeZone for both start and end
+          eventId,
+          calendarId
+        ]
+      );
+      res.json({ message: "Event updated successfully", eventId: eventId });
+    } else {
+      // The event does not exist, so insert it with the provided ID
+      await db.query(
+        'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          eventId,
+          calendarId,
+          summary,
+          location,
+          description,
+          start.dateTime,
+          end.dateTime,
+          start.timeZone // Assuming the same timeZone for both start and end
+        ]
+      );
+      res.status(201).json({ message: "Event added successfully", eventId: eventId });
+    }
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).send('Failed to process request');
+  }
+});
 
 
 
+
+app.get('/v1/:userId', apiKeyMiddleware, async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    // First, ensure the user has a calendar
+    const calendars = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+    if (calendars.length === 0) {
+      return res.status(404).send('Calendar not found for the given user ID.');
+    }
+    const calendarId = calendars[0].id;
+
+    // Query to select events from the database
+    const events = await db.query('SELECT * FROM events WHERE calendarId = ?', [calendarId]);
+
+    // If no events found, you can decide to return an empty array or a message
+    if (events.length === 0) {
+      return res.status(404).send('No events found for the given calendar.');
+    }
+
+    // Respond with the events
+    res.json(events);
+  } catch (error) {
+    console.error('Failed to retrieve events:', error);
+    res.status(500).send('Failed to retrieve events');
+  }
+});
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);

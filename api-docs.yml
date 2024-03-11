@@ -1,14 +1,16 @@
 openapi: 3.0.0
+servers:
+  - url: http://localhost:3000/
 info:
   title: Calendar API
   version: "1.0"
+security:
+  - ApiKeyAuth: []
 paths:
   /v1/login:
     get:
       summary: Redirect to Google's OAuth 2.0 server
-      description: |
-        Initiates the OAuth 2.0 authentication flow by redirecting the user to Google's OAuth 2.0 server.
-      parameters: []
+      description: Initiates the OAuth 2.0 authentication flow by redirecting the user to Google's OAuth 2.0 server.
       responses:
         '302':
           description: Redirects to Google OAuth server
@@ -18,9 +20,8 @@ paths:
           description: Internal server error
   /oauth2callback:
     get:
-      summary: OAuth 2.0 Callback Endpoint
-      description: |
-        Handles the callback from Google's OAuth 2.0 server. This endpoint exchanges the authorization code for access and refresh tokens with Google, and then generates a JWT token for the user. This JWT token should be used in the `Authorization` header for subsequent requests requiring authentication.
+      summary: OAuth 2.0 Callback Endpointeger
+      description: Handles the callback from Google's OAuth 2.0 server. This endpointeger exchanges the authorization code for access and refresh tokens with Google, and then generates a JWT token for the user.
       responses:
         '200':
           description: Authentication successful, userID is returned.
@@ -33,13 +34,12 @@ paths:
                     type: string
                     example: Authentication successful!
                   token:
-                    type: int
+                    type: integer
                     example: '50'
         '400':
           description: Bad request, failed to exchange authorization code.
         '500':
           description: Internal server error, failed to process the request.
-
   /v1/{userId}/:
     post:
       summary: Create a new calendar for the user
@@ -62,10 +62,6 @@ paths:
                   type: string
                   description: Name of the calendar.
                   example: 'Personal Calendar'
-                description:
-                  type: string
-                  description: Description of the calendar.
-                  example: 'Calendar for tracking daily events.'
       responses:
         '201':
           description: Calendar successfully created.
@@ -74,42 +70,27 @@ paths:
               schema:
                 type: object
                 properties:
-                  calendarId:
-                    type: integer
-                    description: The ID of the newly created calendar.
                   message:
                     type: string
                     description: Success message.
                     example: 'Calendar created successfully.'
         '400':
           description: Bad Request. User already has a calendar.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Error message indicating that the user already has a calendar.
-                    example: 'User already has a calendar.'
         '404':
-          description: Not Found. User not found for the given user ID.
+          description: User not found for the given user ID.
         '500':
           description: Internal Server Error. Failed to create calendar.
-
   /v1/{userId}:
     patch:
       summary: Insert or update an event in the user's calendar
-      description: >
-        If the event ID exists in the user's calendar, it updates the event.
-        Otherwise, it inserts a new event with the provided details.
+      description: If the event ID exists in the user's calendar, it updates the event. Otherwise, it inserts a new event with the provided details.
       parameters:
         - in: path
           name: userId
           required: true
           description: The ID of the user whose calendar is being modified.
           schema:
-            type: string
+            type: integer
       requestBody:
         required: true
         content:
@@ -118,8 +99,8 @@ paths:
               type: object
               properties:
                 eventId:
-                  type: string
-                  description: Unique identifier for the event (to be provided by the client).
+                  type: integer
+                  description: Unique identifier for the event.
                 summary:
                   type: string
                   description: A short summary of the event.
@@ -130,25 +111,15 @@ paths:
                   type: string
                   description: A detailed description of the event.
                 start:
-                  type: object
-                  properties:
-                    dateTime:
-                      type: string
-                      format: date-time
-                      description: The start date and time of the event.
-                    timeZone:
-                      type: string
-                      description: The time zone of the start dateTime.
+                  type: string
+                  type: string
+                  format: date-time
+                  description: The start date and time of the event.
                 end:
-                  type: object
-                  properties:
-                    dateTime:
-                      type: string
-                      format: date-time
-                      description: The end date and time of the event.
-                    timeZone:
-                      type: string
-                      description: The time zone of the end dateTime.
+                  type: string
+                  type: string
+                  format: date-time
+                  description: The end date and time of the event.
       responses:
         '201':
           description: Event added successfully.
@@ -162,14 +133,12 @@ paths:
                     description: Success message.
                     example: 'Event added successfully'
                   eventId:
-                    type: string
+                    type: integer
                     description: The ID of the added or updated event.
         '404':
           description: Calendar not found for the given user ID.
         '500':
           description: Failed to process request.
-  
-    /v1/{userId}:
     get:
       summary: Retrieve events for a specific user's calendar
       description: Retrieves all events associated with the specified user's calendar.
@@ -190,9 +159,6 @@ paths:
                 items:
                   type: object
                   properties:
-                    id:
-                      type: integer
-                      description: The ID of the event.
                     summary:
                       type: string
                       description: A brief summary of the event.
@@ -210,21 +176,30 @@ paths:
                       type: string
                       format: date-time
                       description: The end date and time of the event.
-                    timeZone:
-                      type: string
-                      description: The time zone of the event.
         '404':
-          description: Not Found. Calendar not found for the given user ID, or no events found for the given calendar.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Error message indicating that no calendar or events were found for the user.
+          description: Calendar not found for the given user ID, or no events found for the given calendar.
         '500':
           description: Internal Server Error. Failed to retrieve events.
+  /v1/{userId}/{eventId}:
+    delete:
+      summary: Delete a specific event from a user's calendar
+      description: Deletes an event by its ID for the specified user.
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          description: The ID of the user.
+          schema:
+            type: integer
+        - in: path
+          name: eventId
+          required: true
+          description: The ID of the event to delete.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event deleted successfully.
           content:
             application/json:
               schema:
@@ -232,6 +207,14 @@ paths:
                 properties:
                   message:
                     type: string
-                    description: Error message indicating that there was a server error while retrieving events.
-
- 
+                    example: Event deleted successfully!
+        '404':
+          description: Event not found.
+        '500':
+          description: Internal server error.
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: SERVICE-API-KEY

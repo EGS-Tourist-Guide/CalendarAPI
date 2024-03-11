@@ -1,0 +1,5 @@
+curl -X POST http://localhost:3000/v1/1/ \
+-H "Content-Type: application/json" \
+-H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
+-d '{"name":"My New Calendar","description":"This is a description of my new calendar."}'
+
