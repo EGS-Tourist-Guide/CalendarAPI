@@ -146,7 +146,7 @@ app.get('/oauth2callback', async (req, res) => {
 
     // Instead of sending the user data back as JSON, redirect to an intermediate page
     // The page will then handle redirecting back to the app with the necessary data
-    // Example: Redirecting to an intermediate page with user's ID as a parameter
+    // Redirecting to an intermediate page with user's ID as a parameter
     const deepLinkUrl = `/auth-success.html?userId=${user.id}`;
     res.redirect(deepLinkUrl);    
 
@@ -162,9 +162,6 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
   try {
     // Corrected query to check if the user already has a calendar
     const [existingCalendars] = await db.query('SELECT * FROM calendars WHERE userId = ?', [userId]);
-
-    // Log the actual query result for debugging
-    //console.log(existingCalendars);
 
     if (existingCalendars.length > 0) {
       // Correctly handle the case where a calendar exists
@@ -219,6 +216,41 @@ app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
     res.status(500).send('Failed to process request');
   }
 });
+
+
+
+// Updates an existing event in the user's calendar
+app.patch('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
+  const { userId, eventId } = req.params;
+  const { summary, location, description, start, end, timeZone } = req.body;
+
+  try {
+    // Check if the calendar for the given user ID exists
+    const calendarsResult = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+    if (calendarsResult[0].length === 0) {
+      return res.status(404).send('Calendar not found for the given user ID.');
+    }
+    const calendarId = calendarsResult[0][0].id;
+
+    // Check if the event exists in the user's calendar
+    const eventResult = await db.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+    if (eventResult[0].length === 0) {
+      return res.status(404).send(`Event with ID ${eventId} not found in the user's calendar.`);
+    }
+
+    // Proceed to update the event
+    await db.query(
+      'UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE id = ? AND calendarId = ?',
+      [summary, location, description, start, end, timeZone, eventId, calendarId]
+    );
+    res.json({ message: "Event updated successfully", eventId: eventId });
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).send('Failed to process request');
+  }
+});
+
+
 
 
 

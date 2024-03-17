@@ -122,6 +122,7 @@ paths:
                   type: string
                   format: timezone
                   description: The timezone of the event.
+                  
       responses:
         '201':
           description: Event added successfully.
@@ -182,23 +183,91 @@ paths:
           description: Calendar not found for the given user ID, or no events found for the given calendar.
         '500':
           description: Internal Server Error. Failed to retrieve events.
+
   /v1/{userId}/calendars/{eventId}:
-    delete:
-      summary: Delete a specific event from a user's calendar
-      description: Deletes an event by its ID for the specified user.
+    patch:
+      summary: Updates an existing event in the user's calendar
+      description: If the user's calendar exists, it updates the event with the provided details. 
       parameters:
         - in: path
-          name: calendarID
+          name: userId
           required: true
-          description: The calendarID of the user.
+          description: The ID of the user whose calendar is being modified.
           schema:
             type: integer
         - in: path
           name: eventId
           required: true
-          description: The ID of the event to delete.
+          description: The ID of the event that is being updated.
           schema:
             type: integer
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary:
+                  type: string
+                  description: A short summary of the event.
+                location:
+                  type: string
+                  description: The location where the event will take place.
+                description:
+                  type: string
+                  description: A detailed description of the event.
+                start:
+                  type: string
+                  type: string
+                  format: date-time
+                  description: The start date and time of the event.
+                end:
+                  type: string
+                  type: string
+                  format: date-time
+                  description: The end date and time of the event.
+                timezone:
+                  type: string
+                  type: string
+                  format: timezone
+                  description: The timezone of the event.
+      responses:
+        '200':
+          description: Event updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Event updated successfully'
+                  eventId:
+                    type: integer
+                    description: The ID of the updated event.
+        '404':
+          description: Calendar not found for the given user ID or event not found in the user's calendar.
+        '500':
+          description: Failed to process request.
+    delete:
+      summary: delete an existing event in the user's calendar
+      description: If the user's calendar exists, it deletes the event with the provided details. 
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          description: The ID of the user whose calendar is being modified.
+          schema:
+            type: integer
+        - in: path
+          name: eventId
+          required: true
+          description: The ID of the event that is being updated.
+          schema:
+            type: integer
+
       responses:
         '200':
           description: Event deleted successfully.
@@ -209,11 +278,16 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Event deleted successfully!
+                    example: 'Event updated successfully'
+                  eventId:
+                    type: integer
+                    description: The ID of the updated event.
         '404':
-          description: Event not found.
+          description: Calendar not found for the given user ID or event not found in the user's calendar.
         '500':
-          description: Internal server error.
+          description: Failed to process request.
+
+
 components:
   securitySchemes:
     ApiKeyAuth:  
