@@ -81,8 +81,8 @@ async function fetchUserInfo(accessToken) {
 
 
 const apiKeyMiddleware = (req, res, next) => {
-    const apiKey = req.headers['x-api-key']; // Assuming the API key is sent in the header
-    const validApiKey = process.env.VALID_API_KEY; // Your valid API key stored in an environment variable
+    const apiKey = req.headers['x-api-key']; // API key is sent in the header
+    const validApiKey = process.env.VALID_API_KEY; // API key stored in an environment variable
 
     if (!apiKey || apiKey !== validApiKey) {
         return res.status(401).json({ message: 'Invalid API Key' });
@@ -94,8 +94,8 @@ const apiKeyMiddleware = (req, res, next) => {
 // Redirect to Google's OAuth 2.0 server
 app.get('/v1/login', (req, res) => {
   //console.log(`Current directory: ${process.cwd()}`);
-  // This method generates the URL to which the user will be redirected for authentication.
-  //this code sets up a route that initiates the OAuth 2.0 authentication process with 
+  // enerates the URL to which the user will be redirected for authentication.
+  //route that initiates the OAuth 2.0 authentication process 
   try {
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -130,10 +130,10 @@ app.get('/oauth2callback', async (req, res) => {
 
   // Step 1: Save user info to `users` table or get existing user
   let user = await findOrCreateUser({
-      googleId: userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-  });
+    googleId: userInfo.id,
+    email: userInfo.email,
+    name: userInfo.name,
+});
 
   // // Step 2: Save OAuth tokens to `storeDB` table
   // await saveUserTokens({
@@ -147,8 +147,8 @@ app.get('/oauth2callback', async (req, res) => {
     // Instead of sending the user data back as JSON, redirect to an intermediate page
     // The page will then handle redirecting back to the app with the necessary data
     // Example: Redirecting to an intermediate page with user's ID as a parameter
-    const appRedirectURL = `/auth-success.html?userId=${user.id}`;
-    res.redirect(appRedirectURL);
+    const deepLinkUrl = `/auth-success.html?userId=${user.id}`;
+    res.redirect(deepLinkUrl);    
 
     //res.json({ message: 'Authentication successful!', token: user.id });
 });
@@ -157,7 +157,7 @@ app.get('/oauth2callback', async (req, res) => {
 //Create a new calendar for the user
 app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   try {
     // Corrected query to check if the user already has a calendar
@@ -177,12 +177,12 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
     const insertResult = await db.query('INSERT INTO calendars (userId, name) VALUES (?, ?)', [userId, name]);
 
     // Use insertResult to get the new calendar ID
-    const calendarId = insertResult.insertId;
+    const calendarId = insertResult[0].insertId;
 
     // Respond with the success message and the new calendar's ID
     res.status(201).json({
       message: "Calendar created successfully",
-      calendarId: calendarId,
+      //calendarId: calendarId,
     });
 
   } catch (error) {
@@ -192,41 +192,28 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 });
 
 
-//Insere o evento no calendario do utilizador 
-app.patch('/v1/:userId/events', apiKeyMiddleware, async (req, res) => {
+
+
+
+// Insere um novo evento no calendário do usuário
+app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
-  const { eventId, summary, location, description, start, end } = req.body;
+  const { summary, location, description, start, end, timeZone } = req.body;
 
   try {
     const calendarsResult = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    console.log(calendarsResult[0]);
-    if (calendarsResult[0].length=== 0) {
+    if (calendarsResult[0].length === 0) {
       return res.status(404).send('Calendar not found for the given user ID.');
     }
     const calendarId = calendarsResult[0][0].id;
-    console.log(calendarId);
     
-    const eventExistResult = await db.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    console.log(eventExistResult); // Add this to check the output
-    if (eventExistResult[0] && eventExistResult[0].length > 0) {
-      const updateResult = await db.query(
-        'UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE id = ? AND calendarId = ?',
-        [summary, location, description, start.dateTime, end.dateTime, start.timeZone, eventId, calendarId]
-      );
-
-      // Check if the update was successful
-      if (updateResult.affectedRows === 0) {
-        return res.status(404).send('Event update failed.');
-      }
-
-      res.json({ message: "Event updated successfully", eventId: eventId });
-    } else {
-      await db.query(
-        'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [eventId, calendarId, summary, location, description, start.dateTime, end.dateTime, start.timeZone]
-      );
-      res.status(201).json({ message: "Event added successfully", eventId: eventId });
-    }
+    // Insere um novo evento, o MySQL irá autoincrementar o id
+    const insertResult = await db.query(
+      'INSERT INTO events (calendarId, summary, location, description, startDateTime, endDateTime, timeZone) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [calendarId, summary, location, description, start, end, timeZone] 
+    );
+    const newEventId = insertResult[0].insertId;
+    res.status(201).json({ message: "Event added successfully", eventId: newEventId });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -235,7 +222,36 @@ app.patch('/v1/:userId/events', apiKeyMiddleware, async (req, res) => {
 
 
 
-app.get('/v1/:userId', apiKeyMiddleware, async (req, res) => {
+// Deletes an existing event from the user's calendar
+app.delete('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
+  const userId = req.params.userId;
+  const eventId = req.params.eventId;
+
+  try {
+    // First, check if the calendar for the given user ID exists
+    const calendarResult = await db.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+    if (calendarResult[0].length === 0) {
+      return res.status(404).send('Calendar not found for the given user ID.');
+    }
+    const calendarId = calendarResult[0][0].id;
+
+    // Check if the event exists in the user's calendar
+    const eventResult = await db.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+    if (eventResult[0].length === 0) {
+      return res.status(404).send('Event not found in the user\'s calendar.');
+    }
+
+    // Proceed to delete the event
+    await db.query('DELETE FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+    res.json({ message: "Event deleted successfully", eventId: eventId });
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).send('Failed to process request');
+  }
+});
+
+
+app.get('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
 
   try {
@@ -261,6 +277,7 @@ app.get('/v1/:userId', apiKeyMiddleware, async (req, res) => {
     res.status(500).send('Failed to retrieve events');
   }
 });
+
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);

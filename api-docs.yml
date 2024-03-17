@@ -20,26 +20,26 @@ paths:
           description: Internal server error
   /oauth2callback:
     get:
-      summary: OAuth 2.0 Callback Endpointeger
-      description: Handles the callback from Google's OAuth 2.0 server. This endpointeger exchanges the authorization code for access and refresh tokens with Google, and then generates a JWT token for the user.
+      summary: OAuth 2.0 Callback Endpoint
+      description: >
+        Handles the callback from Google's OAuth 2.0 server. This endpoint exchanges
+        the authorization code for access and refresh tokens with Google. After obtaining
+        and storing the user's information, it redirects to an intermediate page which
+        then can handle further user-specific redirection or actions.
       responses:
-        '200':
-          description: Authentication successful, userID is returned.
-          content:
-            application/json:
+        '302':
+          description: Found. Redirect to an intermediate success page.
+          headers:
+            Location:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Authentication successful!
-                  token:
-                    type: integer
-                    example: '50'
+                type: string
+                example: /auth-success.html?userId=12345
+              description: Redirect location to the success page with the user ID as a query parameter.
         '400':
           description: Bad request, failed to exchange authorization code.
         '500':
           description: Internal server error, failed to process the request.
+
   /v1/{userId}/:
     post:
       summary: Create a new calendar for the user
@@ -80,10 +80,10 @@ paths:
           description: User not found for the given user ID.
         '500':
           description: Internal Server Error. Failed to create calendar.
-  /v1/{userId}:
-    patch:
-      summary: Insert or update an event in the user's calendar
-      description: If the event ID exists in the user's calendar, it updates the event. Otherwise, it inserts a new event with the provided details.
+  /v1/{userId}/calendars:
+    post:
+      summary: Inserts a new event into the user's calendar with the provided details. 
+      description: If the user's calendar exists, it adds the event with the provided details. 
       parameters:
         - in: path
           name: userId
@@ -98,9 +98,6 @@ paths:
             schema:
               type: object
               properties:
-                eventId:
-                  type: integer
-                  description: Unique identifier for the event.
                 summary:
                   type: string
                   description: A short summary of the event.
@@ -120,6 +117,11 @@ paths:
                   type: string
                   format: date-time
                   description: The end date and time of the event.
+                timezone:
+                  type: string
+                  type: string
+                  format: timezone
+                  description: The timezone of the event.
       responses:
         '201':
           description: Event added successfully.
@@ -180,15 +182,15 @@ paths:
           description: Calendar not found for the given user ID, or no events found for the given calendar.
         '500':
           description: Internal Server Error. Failed to retrieve events.
-  /v1/{userId}/{eventId}:
+  /v1/{userId}/calendars/{eventId}:
     delete:
       summary: Delete a specific event from a user's calendar
       description: Deletes an event by its ID for the specified user.
       parameters:
         - in: path
-          name: userId
+          name: calendarID
           required: true
-          description: The ID of the user.
+          description: The calendarID of the user.
           schema:
             type: integer
         - in: path
@@ -214,7 +216,7 @@ paths:
           description: Internal server error.
 components:
   securitySchemes:
-    ApiKeyAuth:  # This is an arbitrary name for the security scheme
+    ApiKeyAuth:  
       type: apiKey
       in: header
       name: x-api-key  # This should match the header name used in your requests

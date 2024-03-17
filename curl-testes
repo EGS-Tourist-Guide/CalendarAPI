@@ -1,30 +1,36 @@
-curl -X POST http://localhost:3000/v1/1/ \
+
+--criar calendario user 1 
+
+curl -X POST http://localhost:3000/v1/1 \
 -H "Content-Type: application/json" \
 -H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
--d '{"name":"My New Calendar","description":"This is a description of my new calendar."}'
+-d '{"name":"My New Calendar"}'
 
 
 
-curl -X PATCH http://localhost:3000/v1/1/events \
+-- adicionar evento para o user 1  
+
+curl -X POST http://localhost:3000/v1/1/calendars/ \
 -H "Content-Type: application/json" \
 -H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
 -d '{
-    "eventId": 3,
     "summary": "Meeting with Bob",
     "location": "123 Main St, City, Country",
     "description": "Discuss project progress",
-    "start": {
-        "dateTime": "2024-03-12T10:00:00",
-        "timeZone": "Europe/London"
-    },
-    "end": {
-        "dateTime": "2024-03-12T11:00:00",
-        "timeZone": "Europe/London"
-    }
+    "start": "2024-03-12 10:00:00",
+    "end": "2024-03-12 11:00:00",
+    "timeZone": "Europe/London"
 }'
 
 
+--eliminar evento 7 para o user 1 
+curl -X DELETE http://localhost:3000/v1/1/calendars/7 \
+-H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
 
 
-curl -X GET "http://localhost:3000/v1/2" -H "Content-Type: application/json" -H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
+--buscar todos os eventos : user 1 p.e
+
+curl -X GET "http://localhost:3000/v1/1/calendars/" \
+-H "Content-Type: application/json" \
+-H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
 
