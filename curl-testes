@@ -1,4 +1,13 @@
 
+guardar ids eventos no android studio?
+
+
+
+--login
+
+http://localhost:3000/v1/login
+
+
 --criar calendario user 1 
 
 curl -X POST http://localhost:3000/v1/1 \
@@ -15,18 +24,18 @@ retorna:
 
 
 
--- adicionar evento para o user 1  
+-- adicionar evento para o user 1  -> book now 
 
 curl -X POST http://localhost:3000/v1/1/calendars/ \
 -H "Content-Type: application/json" \
 -H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
 -d '{
-    "summary": "Meeting with Bob",
-    "location": "123 Main St, City, Country",
-    "description": "Discuss project progress",
-    "start": "2024-03-12 10:00:00",
-    "end": "2024-03-12 11:00:00",
-    "timeZone": "Europe/London"
+    "summary": "Teste Book now",
+    "location": "Android studio",
+    "description": "Discord",
+    "start": "2024-03-19 21:00:00",
+    "end": "2024-03-19 21:45:00",
+    "timeZone": "Europe"
 }'
 
 retorna:
@@ -36,9 +45,29 @@ retorna:
 }
 
 
+DEPOIS DA CHAMADA POST (book now) chamar logo GET para preencher o calendario com o novo evento (agrupar sempre estes 2 endpoints)
+
+--buscar todos os eventos : user 1 p.e
+
+curl -X GET "http://localhost:3000/v1/1/calendars/11" \
+-H "Content-Type: application/json" \
+-H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
 
 
---atualizar evento do user 1 event id 8
+retorna info de evento para "preencher calendario":
+[
+  {
+    "summary": "string",
+    "location": "string",
+    "description": "string",
+    "startDateTime": "2024-03-17 19:54:02.212",
+    "endDateTime": "2024-03-17 19:54:02.212"
+  }
+]
+
+
+
+--atualizar evento do user 1 event id 8 
 
 curl -X PATCH http://localhost:3000/v1/1/calendars/8 \
 -H "Content-Type: application/json" \
@@ -55,27 +84,11 @@ curl -X PATCH http://localhost:3000/v1/1/calendars/8 \
 
 
 
---eliminar evento 7 para o user 1 
-curl -X DELETE http://localhost:3000/v1/1/calendars/7 \
+--eliminar evento 7 para o user 1 -> opcional (evento que esta dentro do calendario, num dia especifico, ir ver google calendar se for preciso ver exemplo pratico)
+
+curl -X DELETE http://localhost:3000/v1/1/calendars/13 \
 -H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
 
 
---buscar todos os eventos : user 1 p.e
-
-curl -X GET "http://localhost:3000/v1/1/calendars/" \
--H "Content-Type: application/json" \
--H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
-
-
-retorna array de eventos:
-[
-  {
-    "summary": "string",
-    "location": "string",
-    "description": "string",
-    "startDateTime": "2024-03-17T19:54:02.212Z",
-    "endDateTime": "2024-03-17T19:54:02.212Z"
-  }
-]
 
 

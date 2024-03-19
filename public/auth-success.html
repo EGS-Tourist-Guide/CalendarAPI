@@ -1,0 +1,52 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Successful</title>
+</head>
+<body>
+    <h1>Authentication Successful!</h1>
+    <p>Please click the button below to continue in the app.</p>
+    <button onclick="redirectToApp()">Open App</button>
+    <script>
+        function redirectToApp() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            
+            // Construct your app's custom scheme URL with necessary data
+            const appScheme = `touristGuide://oauth?userId=${userId}`;
+            
+            // Redirect to your app
+            window.location.href = appScheme;
+        }
+
+        // Optionally, automatically redirect after a delay or immediately
+        window.onload = function() {
+            setTimeout(redirectToApp, 3000); // Redirect after 3 seconds
+        };
+    </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Success</title>
+    <!-- <script type="text/javascript">
+        window.onload = function() {
+            // Extract the userId from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+
+            // Construct the deep link URL
+            const deepLinkUrl = `touristGuide://oauth?userId=${userId}`;
+
+            // Redirect to the deep link URL, opening the app
+            window.location.href = deepLinkUrl;
+        }
+    </script> -->
+</head>
+<body>
+    <p>Authentication successful! You are being redirected...</p>
+</body>
+</html>

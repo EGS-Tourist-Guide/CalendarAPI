@@ -80,10 +80,11 @@ paths:
           description: User not found for the given user ID.
         '500':
           description: Internal Server Error. Failed to create calendar.
+
   /v1/{userId}/calendars:
     post:
-      summary: Inserts a new event into the user's calendar with the provided details. 
-      description: If the user's calendar exists, it adds the event with the provided details. 
+      summary: Inserts a new event into the user's calendar with the provided details.
+      description: Adds the event with the provided details to the user's calendar if it exists.
       parameters:
         - in: path
           name: userId
@@ -109,20 +110,20 @@ paths:
                   description: A detailed description of the event.
                 start:
                   type: string
-                  type: string
-                  format: date-time
-                  description: The start date and time of the event.
+                  description: The start date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'.
                 end:
                   type: string
-                  type: string
-                  format: date-time
-                  description: The end date and time of the event.
+                  description: The end date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'.
                 timezone:
                   type: string
-                  type: string
-                  format: timezone
                   description: The timezone of the event.
-                  
+              example:
+                summary: Team Meeting
+                location: Office Conference Room
+                description: Discuss project updates and next steps.
+                start: "2024-03-19 09:00:00"
+                end: "2024-03-19 10:00:00"
+                timezone: Europe/Lisbon
       responses:
         '201':
           description: Event added successfully.
@@ -142,49 +143,57 @@ paths:
           description: Calendar not found for the given user ID.
         '500':
           description: Failed to process request.
+
+  /v1/{userId}/calendars/{eventId}:
     get:
-      summary: Retrieve events for a specific user's calendar
-      description: Retrieves all events associated with the specified user's calendar.
+      summary: Retrieve a specific event from a user's calendar
+      description: Retrieves details of a specific event associated with the specified user's calendar using the event ID.
       parameters:
         - in: path
           name: userId
           required: true
-          description: The ID of the user whose calendar events are being retrieved.
+          description: The ID of the user whose calendar event is being retrieved.
+          schema:
+            type: integer
+        - in: path
+          name: eventId
+          required: true
+          description: The ID of the event to retrieve.
           schema:
             type: integer
       responses:
         '200':
-          description: A list of calendar events successfully retrieved.
+          description: The details of the calendar event successfully retrieved.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    summary:
-                      type: string
-                      description: A brief summary of the event.
-                    location:
-                      type: string
-                      description: The location of the event.
-                    description:
-                      type: string
-                      description: A detailed description of the event.
-                    startDateTime:
-                      type: string
-                      format: date-time
-                      description: The start date and time of the event.
-                    endDateTime:
-                      type: string
-                      format: date-time
-                      description: The end date and time of the event.
+                type: object
+                properties:
+                  summary:
+                    type: string
+                    description: A brief summary of the event.
+                  location:
+                    type: string
+                    description: The location of the event.
+                  description:
+                    type: string
+                    description: A detailed description of the event.
+                  startDateTime:
+                    type: string
+                    format: date-time
+                    description: The start date and time of the event.
+                  endDateTime:
+                    type: string
+                    format: date-time
+                    description: The end date and time of the event.
+                  timeZone:
+                    type: string
+                    description: The timezone of the event.
         '404':
-          description: Calendar not found for the given user ID, or no events found for the given calendar.
+          description: Calendar not found for the given user ID, or event not found for the given event ID.
         '500':
-          description: Internal Server Error. Failed to retrieve events.
+          description: Internal Server Error. Failed to retrieve the event.
 
-  /v1/{userId}/calendars/{eventId}:
     patch:
       summary: Updates an existing event in the user's calendar
       description: If the user's calendar exists, it updates the event with the provided details. 
@@ -201,7 +210,6 @@ paths:
           description: The ID of the event that is being updated.
           schema:
             type: integer
-
       requestBody:
         required: true
         content:
@@ -220,19 +228,17 @@ paths:
                   description: A detailed description of the event.
                 start:
                   type: string
-                  type: string
-                  format: date-time
-                  description: The start date and time of the event.
+                  format: 'date-time'
+                  description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
+                  example: '2024-03-19 10:00:00'
                 end:
                   type: string
-                  type: string
-                  format: date-time
-                  description: The end date and time of the event.
+                  format: 'date-time'
+                  description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
+                  example: '2024-03-19 11:00:00'
                 timezone:
                   type: string
-                  type: string
-                  format: timezone
-                  description: The timezone of the event.
+                  description: The timezone of the event. Example values can be 'UTC', 'Europe/London', etc.
       responses:
         '200':
           description: Event updated successfully.
@@ -251,6 +257,7 @@ paths:
           description: Calendar not found for the given user ID or event not found in the user's calendar.
         '500':
           description: Failed to process request.
+
     delete:
       summary: delete an existing event in the user's calendar
       description: If the user's calendar exists, it deletes the event with the provided details. 
