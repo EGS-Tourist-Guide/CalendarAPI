@@ -10,6 +10,7 @@
 //  > -d '{"name":"My Personal Calendar","description":"This calendar is for tracking my personal events."}'
 
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const { google } = require('googleapis');
 const db = require('./database/database');
@@ -17,7 +18,9 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const swaggerDocument = YAML.load('api-docs.yml');
 const cors = require('cors');
-const config = require('./config/config.js'); // Corrected require statement
+const config = require('./config/config.js'); 
+
+const { findOrCreateUser } = require('./userManagement.js');
 
 const corsOptions = {
   origin: '*', // Allow all origins
@@ -84,16 +87,62 @@ async function fetchUserInfo(accessToken) {
 
 
 
-const apiKeyMiddleware = (req, res, next) => {
-    const apiKey = req.headers['x-api-key']; // API key is sent in the header
-    const validApiKey = process.env.VALID_API_KEY; // API key stored in an environment variable
+app.post('/generate-api-key', async (req, res) => {
+  // Use clientName to identify 
+  const clientName = req.body.clientName;
 
-    if (!apiKey || apiKey !== validApiKey) {
-        return res.status(401).json({ message: 'Invalid API Key' });
-    }
+  if (!clientName) {
+      return res.status(400).send('Client name is required');
+  }
 
-    next(); 
+  // Optionally, you can check if the client name already has an API key
+  const pool = db.getPool();
+  const [existing] = await pool.query('SELECT * FROM api_keys WHERE client_id = ?', [clientName]);
+  if (existing.length > 0) {
+      // Client already has an API key
+      return res.status(409).send('An API key for this client already exists.');
+  }
+
+  // Generate the API key
+  const apiKey = crypto.randomBytes(30).toString('hex');
+
+  // Store the API key and client name in the database
+  try {
+      await pool.query('INSERT INTO api_keys (client_id, api_key) VALUES (?, ?)', [clientName, apiKey]);
+      res.json({ message: "API Key generated successfully", apiKey: apiKey });
+  } catch (error) {
+      console.error('Failed to store API key:', error);
+      res.status(500).send('Failed to generate API key');
+  }
+});
+
+
+const apiKeyMiddleware = async (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+
+  if (!apiKey) {
+      return res.status(401).json({ message: 'API Key is required' });
+  }
+
+  try {
+      const pool = db.getPool();
+      const [apiKeys] = await pool.query('SELECT api_key FROM api_keys WHERE api_key = ?', [apiKey]);
+      
+      if (apiKeys.length === 0) {
+          return res.status(401).json({ message: 'Invalid API Key' });
+      }
+
+      next();
+  } catch (error) {
+      console.error('API Key validation failed:', error);
+      res.status(500).send('Failed to validate API Key');
+  }
 };
+
+
+
+
+
 
 // Redirect to Google's OAuth 2.0 server
 app.get('/v1/login', (req, res) => {
@@ -184,7 +233,7 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
     // Respond with the success message 
     res.status(201).json({
       message: "Calendar created successfully",
-      //calendarId: calendarId,
+      calendarId: calendarId,
     });
 
   } catch (error) {
@@ -200,7 +249,7 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 // Insere um novo evento no calendário do usuário
 app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
-  const { summary, location, description, start, end, timeZone } = req.body;
+  const { summary, location, description, start, end, timeZone, obs } = req.body;
 
   try {
     const pool = db.getPool();
@@ -209,14 +258,13 @@ app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
       return res.status(404).send('Calendar not found for the given user ID.');
     }
     const calendarId = calendarsResult[0].id;
-    
-    // Insert a new event, MySQL will generate the id associated to him 
-    const [insertResult] = await pool.query(
-      'INSERT INTO events (calendarId, summary, location, description, startDateTime, endDateTime, timeZone) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [calendarId, summary, location, description, start, end, timeZone]
-    );
-    const newEventId = insertResult.insertId; 
-    res.status(201).json({ message: "Event added successfully", eventId: newEventId });
+
+    const query = 'INSERT INTO events (calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    const values = [calendarId, summary, location, description, start, end, timeZone, obs || null]; // Use 'obs' from the request body or null if not provided
+
+    const [insertResult] = await pool.query(query, values);
+    const newEventId = insertResult.insertId;
+    res.status(201).json({ message: "Event added successfully", calendarId: calendarId });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -224,8 +272,105 @@ app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
 });
 
 
+app.get('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
+  const { userId, eventId } = req.params;
+
+  try {
+    const pool = db.getPool();
+    // Ensure the calendar for this user exists
+    const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+    if (calendars.length === 0) {
+      return res.status(404).send('Calendar not found for the given user ID.');
+    }
+    const calendarId = calendars[0].id;
+
+    // Fetch the specific event with only the desired columns
+    const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+    if (events.length === 0) {
+      return res.status(404).send('Event not found for the given event ID.');
+    }
+
+    // If the event is found, return the specified fields
+    res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
+  } catch (error) {
+    console.error('Failed to retrieve event:', error);
+    res.status(500).send('Failed to retrieve event');
+  }
+});
 
 
+
+//permite pesquisa por calendario (permite pesquisa de eventos nesse calendario por datas ou localização )
+app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+  const { calendarId } = req.params;
+  const { startDate, beforeDate, afterDate, location } = req.query;
+
+  try {
+    const pool = db.getPool();
+    let query = 'SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE calendarId = ?';
+    const queryParams = [calendarId];
+
+    if (startDate) {
+      query += ' AND DATE(startDateTime) = ?';
+      queryParams.push(startDate);
+    }
+    if (beforeDate) {
+      query += ' AND DATE(endDateTime) < ?';
+      queryParams.push(beforeDate);
+    }
+    if (afterDate) {
+      query += ' AND DATE(startDateTime) > ?';
+      queryParams.push(afterDate);
+    }
+    if (location) {
+      query += ' AND location = ?';
+      queryParams.push(location);
+    }
+
+    const [events] = await pool.query(query, queryParams);
+
+    if (events.length === 0) {
+      return res.status(404).send('No events found matching the criteria.');
+    }
+
+    res.json(events);
+  } catch (error) {
+    console.error('Failed to retrieve events:', error);
+    res.status(500).send('Failed to retrieve events');
+  }
+});
+
+
+
+// app.get('/v1/:userId/calendars/:calendarId', apiKeyMiddleware, async (req, res) => {
+//   const { userId, eventId } = req.params;
+
+//   try {
+//     const pool = db.getPool();
+//     // Ensure the calendar for this user exists
+//     const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+//     if (calendars.length === 0) {
+//       return res.status(404).send('Calendar not found for the given user ID.');
+//     }
+//     const calendarId = calendars[0].id;
+
+//     // Fetch the specific event with only the desired columns
+//     const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+//     if (events.length === 0) {
+//       return res.status(404).send('Event not found for the given event ID.');
+//     }
+
+//     // If the event is found, return the specified fields
+//     res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
+//   } catch (error) {
+//     console.error('Failed to retrieve event:', error);
+//     res.status(500).send('Failed to retrieve event');
+//   }
+// });
+
+
+
+//retirar event id e ir à coluna obs de eventos que tem o id do evento do Luis?
 // Updates an existing event in the user's calendar
 app.patch('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
   const { userId, eventId } = req.params;
@@ -292,31 +437,7 @@ app.delete('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) 
 });
 
 
-app.get('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
-  const { userId, eventId } = req.params;
 
-  try {
-    const pool = db.getPool();
-    // Ensure the calendar for this user exists
-    const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendars.length === 0) {
-      return res.status(404).send('Calendar not found for the given user ID.');
-    }
-    const calendarId = calendars[0].id;
-
-    // Fetch the specific event with only the desired columns
-    const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    if (events.length === 0) {
-      return res.status(404).send('Event not found for the given event ID.');
-    }
-
-    // If the event is found, return the specified fields
-    res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
-  } catch (error) {
-    console.error('Failed to retrieve event:', error);
-    res.status(500).send('Failed to retrieve event');
-  }
-});
 
 
 app.listen(port, () => {

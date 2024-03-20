@@ -42,7 +42,7 @@ paths:
 
   /v1/{userId}/:
     post:
-      summary: Create a new calendar for the user
+      summary: Create a new calendar for the user and returns the calendarID associated to the user
       description: Creates a new calendar associated with the specified user within the application.
       parameters:
         - in: path
@@ -74,6 +74,9 @@ paths:
                     type: string
                     description: Success message.
                     example: 'Calendar created successfully.'
+                  calendarId:
+                    type: integer
+                    description: The calendarId the user.
         '400':
           description: Bad Request. User already has a calendar.
         '404':
@@ -84,7 +87,7 @@ paths:
   /v1/{userId}/calendars:
     post:
       summary: Inserts a new event into the user's calendar with the provided details.
-      description: Adds the event with the provided details to the user's calendar if it exists.
+      description: Adds the event with the provided details to the user's calendar if it exists. Optionally includes an 'obs' field to associate the event with an external reference or ID.
       parameters:
         - in: path
           name: userId
@@ -117,6 +120,9 @@ paths:
                 timezone:
                   type: string
                   description: The timezone of the event.
+                obs:
+                  type: string
+                  description: An optional unique identifier or reference for the event.
               example:
                 summary: Team Meeting
                 location: Office Conference Room
@@ -124,6 +130,7 @@ paths:
                 start: "2024-03-19 09:00:00"
                 end: "2024-03-19 10:00:00"
                 timezone: Europe/Lisbon
+                obs: "123e4567-e89b-12d3-a456-426614174000"
       responses:
         '201':
           description: Event added successfully.
@@ -136,13 +143,14 @@ paths:
                     type: string
                     description: Success message.
                     example: 'Event added successfully'
-                  eventId:
+                  calendarId:
                     type: integer
-                    description: The ID of the added or updated event.
+                    description: The calendarId the user.
         '404':
           description: Calendar not found for the given user ID.
         '500':
           description: Failed to process request.
+
 
   /v1/{userId}/calendars/{eventId}:
     get:
@@ -189,6 +197,13 @@ paths:
                   timeZone:
                     type: string
                     description: The timezone of the event.
+                example:
+                  summary: Team Meeting
+                  location: Office Conference Room
+                  description: Discuss project updates and next steps.
+                  start: "2024-03-19 09:00:00"
+                  end: "2024-03-19 10:00:00"
+                  timezone: Europe/Lisbon                    
         '404':
           description: Calendar not found for the given user ID, or event not found for the given event ID.
         '500':
