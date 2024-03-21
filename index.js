@@ -117,6 +117,33 @@ app.post('/generate-api-key', async (req, res) => {
 });
 
 
+app.get('/retrieve-api-key', async (req, res) => {
+  // Use clientName identify the client
+  const clientName = req.query.clientName;
+
+  if (!clientName) {
+      return res.status(400).send('Client name is required');
+  }
+
+  try {
+      const pool = db.getPool();
+      const [result] = await pool.query('SELECT api_key FROM api_keys WHERE client_id = ?', [clientName]);
+      
+      if (result.length === 0) {
+          // No API key found for the client
+          return res.status(404).send('API Key not found for the provided client name');
+      }
+
+      // Return the API key to the client
+      res.json({ apiKey: result[0].api_key });
+  } catch (error) {
+      console.error('Failed to retrieve API key:', error);
+      res.status(500).send('Failed to retrieve API key');
+  }
+});
+
+
+
 const apiKeyMiddleware = async (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
 
@@ -210,7 +237,6 @@ app.get('/oauth2callback', async (req, res) => {
 //Create a new calendar for the user
 app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
-  const { name } = req.body;
 
   try {
     const pool = db.getPool();
@@ -225,12 +251,12 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
     }
 
     // Proceed to insert a new calendar if none exists
-    const insertResult = await pool.query('INSERT INTO calendars (userId, name) VALUES (?, ?)', [userId, name]);
+    const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [userId]);
 
     // Use insertResult to get the new calendar ID
-    //const calendarId = insertResult[0].insertId;
+    const calendarId = insertResult.insertId;
 
-    // Respond with the success message 
+    // Respond with the success message and the new calendar's ID
     res.status(201).json({
       message: "Calendar created successfully",
       calendarId: calendarId,
@@ -245,26 +271,21 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-
 // Insere um novo evento no calendário do usuário
-app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
-  const userId = req.params.userId;
+app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+  const calendarId = req.params.calendarId; // Use the calendarId from the route parameter
   const { summary, location, description, start, end, timeZone, obs } = req.body;
 
   try {
     const pool = db.getPool();
-    const [calendarsResult] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendarsResult.length === 0) {
-      return res.status(404).send('Calendar not found for the given user ID.');
-    }
-    const calendarId = calendarsResult[0].id;
 
+    // Directly insert the event using the provided calendarId, assuming validation or further checks are handled elsewhere
     const query = 'INSERT INTO events (calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     const values = [calendarId, summary, location, description, start, end, timeZone, obs || null]; // Use 'obs' from the request body or null if not provided
 
     const [insertResult] = await pool.query(query, values);
     const newEventId = insertResult.insertId;
-    res.status(201).json({ message: "Event added successfully", calendarId: calendarId });
+    res.status(201).json({ message: "Event added successfully", newEventId: newEventId}); 
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -272,31 +293,32 @@ app.post('/v1/:userId/calendars', apiKeyMiddleware, async (req, res) => {
 });
 
 
-app.get('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
-  const { userId, eventId } = req.params;
 
-  try {
-    const pool = db.getPool();
-    // Ensure the calendar for this user exists
-    const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendars.length === 0) {
-      return res.status(404).send('Calendar not found for the given user ID.');
-    }
-    const calendarId = calendars[0].id;
+// app.get('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
+//   const { userId, eventId } = req.params;
 
-    // Fetch the specific event with only the desired columns
-    const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    if (events.length === 0) {
-      return res.status(404).send('Event not found for the given event ID.');
-    }
+//   try {
+//     const pool = db.getPool();
+//     // Ensure the calendar for this user exists
+//     const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
+//     if (calendars.length === 0) {
+//       return res.status(404).send('Calendar not found for the given user ID.');
+//     }
+//     const calendarId = calendars[0].id;
 
-    // If the event is found, return the specified fields
-    res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
-  } catch (error) {
-    console.error('Failed to retrieve event:', error);
-    res.status(500).send('Failed to retrieve event');
-  }
-});
+//     // Fetch the specific event with only the desired columns
+//     const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
+//     if (events.length === 0) {
+//       return res.status(404).send('Event not found for the given event ID.');
+//     }
+
+//     // If the event is found, return the specified fields
+//     res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
+//   } catch (error) {
+//     console.error('Failed to retrieve event:', error);
+//     res.status(500).send('Failed to retrieve event');
+//   }
+// });
 
 
 
@@ -342,61 +364,42 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-// app.get('/v1/:userId/calendars/:calendarId', apiKeyMiddleware, async (req, res) => {
-//   const { userId, eventId } = req.params;
-
-//   try {
-//     const pool = db.getPool();
-//     // Ensure the calendar for this user exists
-//     const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-//     if (calendars.length === 0) {
-//       return res.status(404).send('Calendar not found for the given user ID.');
-//     }
-//     const calendarId = calendars[0].id;
-
-//     // Fetch the specific event with only the desired columns
-//     const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-//     if (events.length === 0) {
-//       return res.status(404).send('Event not found for the given event ID.');
-//     }
-
-//     // If the event is found, return the specified fields
-//     res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
-//   } catch (error) {
-//     console.error('Failed to retrieve event:', error);
-//     res.status(500).send('Failed to retrieve event');
-//   }
-// });
-
-
-
 //retirar event id e ir à coluna obs de eventos que tem o id do evento do Luis?
 // Updates an existing event in the user's calendar
-app.patch('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
-  const { userId, eventId } = req.params;
+app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+  const { calendarId } = req.params; // Assuming you are using calendarId
+  const { eventId, obs } = req.query; // Assuming eventId or obs can be passed as query parameters
   const { summary, location, description, start, end, timeZone } = req.body;
 
   try {
     const pool = db.getPool();
-    // Check if the calendar for the given user ID exists
-    const calendarsResult = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendarsResult[0].length === 0) {
-      return res.status(404).send('Calendar not found for the given user ID.');
+
+    // Determine the condition based on whether eventId or obs is provided
+    let condition = '';
+    let parameters = [calendarId];
+    if (eventId) {
+      condition = 'id = ? AND calendarId = ?';
+      parameters.unshift(eventId); // Add eventId to the beginning of the parameters array
+    } else if (obs) {
+      condition = 'obs = ? AND calendarId = ?';
+      parameters.unshift(obs); // Add obs to the beginning of the parameters array
+    } else {
+      return res.status(400).send('Either eventId or obs must be provided.');
     }
-    const calendarId = calendarsResult[0][0].id;
 
     // Check if the event exists in the user's calendar
-    const eventResult = await pool.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    if (eventResult[0].length === 0) {
-      return res.status(404).send(`Event with ID ${eventId} not found in the user's calendar.`);
+    const [eventResult] = await pool.query(`SELECT id FROM events WHERE ${condition}`, parameters);
+    if (eventResult.length === 0) {
+      return res.status(404).send(`Event not found in the user's calendar.`);
     }
 
     // Proceed to update the event
+    const updateParameters = [summary, location, description, start, end, timeZone, ...parameters];
     await pool.query(
-      'UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE id = ? AND calendarId = ?',
-      [summary, location, description, start, end, timeZone, eventId, calendarId]
+      `UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE ${condition}`,
+      updateParameters
     );
-    res.json({ message: "Event updated successfully", eventId: eventId });
+    res.json({ message: "Event updated successfully", updatedEventId: eventResult[0].id });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -407,29 +410,34 @@ app.patch('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) =
 
 
 
+
 // Deletes an existing event from the user's calendar
-app.delete('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
-  const userId = req.params.userId;
-  const eventId = req.params.eventId;
+app.delete('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+  const { calendarId } = req.params;
+  const { eventId, obs } = req.query;
+
+  if (!eventId && !obs) {
+    return res.status(400).send('Either eventId or obs is required.');
+  }
 
   try {
     const pool = db.getPool();
-    // First, check if the calendar for the given user ID exists
-    const calendarResult = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-    if (calendarResult[0].length === 0) {
-      return res.status(404).send('Calendar not found for the given user ID.');
-    }
-    const calendarId = calendarResult[0][0].id;
 
-    // Check if the event exists in the user's calendar
-    const eventResult = await pool.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    if (eventResult[0].length === 0) {
-      return res.status(404).send('Event not found in the user\'s calendar.');
+    let query, values;
+    if (eventId) {
+      query = 'DELETE FROM events WHERE id = ? AND calendarId = ?';
+      values = [eventId, calendarId];
+    } else {
+      query = 'DELETE FROM events WHERE obs = ? AND calendarId = ?';
+      values = [obs, calendarId];
     }
 
-    // Proceed to delete the event
-    await pool.query('DELETE FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-    res.json({ message: "Event deleted successfully", eventId: eventId });
+    const [result] = await pool.query(query, values);
+    if (result.affectedRows === 0) {
+      return res.status(404).send('Event not found in the calendar.');
+    }
+
+    res.json({ message: "Event deleted successfully", eventId: eventId || obs });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');

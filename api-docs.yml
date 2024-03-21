@@ -9,6 +9,8 @@ security:
 paths:
   /v1/login:
     get:
+      tags:
+      - Service Endpoint
       summary: Redirect to Google's OAuth 2.0 server
       description: Initiates the OAuth 2.0 authentication flow by redirecting the user to Google's OAuth 2.0 server.
       responses:
@@ -20,6 +22,8 @@ paths:
           description: Internal server error
   /oauth2callback:
     get:
+      tags:
+      - Service Endpoint  
       summary: OAuth 2.0 Callback Endpoint
       description: >
         Handles the callback from Google's OAuth 2.0 server. This endpoint exchanges
@@ -42,6 +46,8 @@ paths:
 
   /v1/{userId}/:
     post:
+      tags:
+      - Service Endpoint    
       summary: Create a new calendar for the user and returns the calendarID associated to the user
       description: Creates a new calendar associated with the specified user within the application.
       parameters:
@@ -51,17 +57,6 @@ paths:
           description: The ID of the user for whom the calendar is being created.
           schema:
             type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: Name of the calendar.
-                  example: 'Personal Calendar'
       responses:
         '201':
           description: Calendar successfully created.
@@ -84,15 +79,17 @@ paths:
         '500':
           description: Internal Server Error. Failed to create calendar.
 
-  /v1/{userId}/calendars:
+  /v1/calendars/:calendarId:
     post:
+      tags:
+      - Service Endpoint
       summary: Inserts a new event into the user's calendar with the provided details.
       description: Adds the event with the provided details to the user's calendar if it exists. Optionally includes an 'obs' field to associate the event with an external reference or ID.
       parameters:
         - in: path
-          name: userId
+          name: calendarId
           required: true
-          description: The ID of the user whose calendar is being modified.
+          description: The ID of the calendar where event is being inserted.
           schema:
             type: integer
       requestBody:
@@ -143,88 +140,114 @@ paths:
                     type: string
                     description: Success message.
                     example: 'Event added successfully'
-                  calendarId:
+                  eventID:
                     type: integer
-                    description: The calendarId the user.
+                    description: The eventId inserted.
+                    
         '404':
           description: Calendar not found for the given user ID.
         '500':
           description: Failed to process request.
 
-
-  /v1/{userId}/calendars/{eventId}:
     get:
-      summary: Retrieve a specific event from a user's calendar
-      description: Retrieves details of a specific event associated with the specified user's calendar using the event ID.
+      tags:
+      - Service Endpoint
+      summary: Retrieve events from a specific calendar based on criteria
+      description: Retrieves events from a specific calendar based on optional search criteria like start date, end date, and location.
       parameters:
         - in: path
-          name: userId
+          name: calendarId
           required: true
-          description: The ID of the user whose calendar event is being retrieved.
+          description: The ID of the calendar from which events are being retrieved.
           schema:
             type: integer
-        - in: path
-          name: eventId
-          required: true
-          description: The ID of the event to retrieve.
+        - in: query
+          name: startDate
+          required: false
+          description: Retrieve events that start on this date (YYYY-MM-DD).
           schema:
-            type: integer
+            type: string
+            format: date
+        - in: query
+          name: beforeDate
+          required: false
+          description: Retrieve events that end before this date (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: afterDate
+          required: false
+          description: Retrieve events that start after this date (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: location
+          required: false
+          description: Retrieve events that take place at this location.
+          schema:
+            type: string
       responses:
         '200':
-          description: The details of the calendar event successfully retrieved.
+          description: A list of events matching the criteria successfully retrieved.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  summary:
-                    type: string
-                    description: A brief summary of the event.
-                  location:
-                    type: string
-                    description: The location of the event.
-                  description:
-                    type: string
-                    description: A detailed description of the event.
-                  startDateTime:
-                    type: string
-                    format: date-time
-                    description: The start date and time of the event.
-                  endDateTime:
-                    type: string
-                    format: date-time
-                    description: The end date and time of the event.
-                  timeZone:
-                    type: string
-                    description: The timezone of the event.
+                type: array
+                items:
+                  type: object
+                  properties:
+                    summary:
+                      type: string
+                      description: A brief summary of the event.
+                    location:
+                      type: string
+                      description: The location of the event.
+                    description:
+                      type: string
+                      description: A detailed description of the event.
+                    startDateTime:
+                      type: string
+                      description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
+                    endDateTime:
+                      type: string
+                      description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
                 example:
-                  summary: Team Meeting
-                  location: Office Conference Room
-                  description: Discuss project updates and next steps.
-                  start: "2024-03-19 09:00:00"
-                  end: "2024-03-19 10:00:00"
-                  timezone: Europe/Lisbon                    
+                  - summary: Team Meeting
+                    location: Office Conference Room
+                    description: Discuss project updates and next steps.
+                    startDateTime: "2024-03-19 09:00:00"
+                    endDateTime: "2024-03-19 10:00:00"
         '404':
-          description: Calendar not found for the given user ID, or event not found for the given event ID.
+          description: No events found matching the criteria or calendar not found.
         '500':
-          description: Internal Server Error. Failed to retrieve the event.
+          description: Internal Server Error. Failed to retrieve events.
 
     patch:
-      summary: Updates an existing event in the user's calendar
-      description: If the user's calendar exists, it updates the event with the provided details. 
+      tags:
+      - Service Endpoint
+      summary: Updates an existing event in a calendar
+      description: Updates the event with the provided details in the specified calendar. The event can be identified by either an internal eventId or an external reference obs.
       parameters:
         - in: path
-          name: userId
+          name: calendarId
           required: true
-          description: The ID of the user whose calendar is being modified.
+          description: The ID of the calendar containing the event to be updated.
           schema:
             type: integer
-        - in: path
+        - in: query
           name: eventId
-          required: true
-          description: The ID of the event that is being updated.
+          required: false
+          description: The internal ID of the event that is being updated. Either eventId or obs must be provided.
           schema:
             type: integer
+        - in: query
+          name: obs
+          required: false
+          description: The external reference or unique identifier for the event. Either eventId or obs must be provided.
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -265,31 +288,35 @@ paths:
                   message:
                     type: string
                     example: 'Event updated successfully'
-                  eventId:
-                    type: integer
-                    description: The ID of the updated event.
         '404':
-          description: Calendar not found for the given user ID or event not found in the user's calendar.
+          description: Calendar not found for the given calendar ID or event not found in the calendar.
         '500':
           description: Failed to process request.
 
     delete:
-      summary: delete an existing event in the user's calendar
-      description: If the user's calendar exists, it deletes the event with the provided details. 
+      tags:
+        - Service Endpoint
+      summary: Delete an existing event from a calendar
+      description: Deletes an event from the specified calendar, identified either by the event's unique ID or an external reference identifier (obs).
       parameters:
         - in: path
-          name: userId
+          name: calendarId
           required: true
-          description: The ID of the user whose calendar is being modified.
+          description: The ID of the calendar from which the event is being deleted.
           schema:
             type: integer
-        - in: path
+        - in: query
           name: eventId
-          required: true
-          description: The ID of the event that is being updated.
+          required: false
+          description: The ID of the event to delete. Required if 'obs' is not provided.
           schema:
             type: integer
-
+        - in: query
+          name: obs
+          required: false
+          description: An external reference identifier for the event to delete. Required if 'eventId' is not provided.
+          schema:
+            type: string
       responses:
         '200':
           description: Event deleted successfully.
@@ -300,15 +327,89 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: 'Event updated successfully'
+                    example: 'Event deleted successfully'
                   eventId:
                     type: integer
-                    description: The ID of the updated event.
+                    description: The ID of the deleted event. Null if deleted by 'obs'.
+                  obs:
+                    type: string
+                    description: The external reference identifier of the deleted event. Null if deleted by 'eventId'.
+        '400':
+          description: Bad Request. Neither eventId nor obs was provided.
         '404':
-          description: Calendar not found for the given user ID or event not found in the user's calendar.
+          description: Calendar not found for the given calendarId, or event not found in the calendar.
         '500':
           description: Failed to process request.
 
+  # API Key Management Paths
+  /generate-api-key:
+    post:
+      tags:
+      - API Key Management
+      summary: Generate a new API key for a client
+      description: This endpoint generates a new API key for the provided client name and stores it in the database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+                  description: The name of the client requesting an API key.
+              required:
+                - clientName
+      responses:
+        '200':
+          description: API Key generated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message.
+                    example: 'API Key generated successfully'
+                  apiKey:
+                    type: string
+                    description: The newly generated API key for the client.
+        '400':
+          description: Bad request, client name is required.
+        '500':
+          description: Internal server error, failed to generate or store the API key.
+  
+  /retrieve-api-key:
+    get:
+      tags:
+      - API Key Management
+      summary: Retrieve a lost API key using the client name
+      description: This endpoint allows a client to retrieve their lost API key by providing their client name.
+      parameters:
+        - in: query
+          name: clientName
+          required: true
+          schema:
+            type: string
+          description: The name of the client whose API key needs to be retrieved.
+      responses:
+        '200':
+          description: API key retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    description: The API key associated with the provided client name.
+        '404':
+          description: API key not found for the provided client name.
+        '400':
+          description: Bad request, client name is required.
+        '500':
+          description: Internal server error, failed to retrieve the API key.
 
 components:
   securitySchemes:
@@ -317,3 +418,8 @@ components:
       in: header
       name: x-api-key  # This should match the header name used in your requests
 
+tags:
+  - name: Service Endpoint
+    description: Endpoints related to the main functionality of the service.
+  - name: API Key Management
+    description: Endpoints for managing API keys.

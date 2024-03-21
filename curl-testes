@@ -12,8 +12,8 @@ http://localhost:3000/v1/login
 
 curl -X POST http://localhost:3000/v1/1 \
 -H "Content-Type: application/json" \
--H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
--d '{"name":"My New Calendar"}'
+-H "x-api-key: 49893e5749d8732235450ffc51786c9d9a3cdbc36a231e3dc409e35ba00f" \
+
 
 
 retorna:
@@ -31,11 +31,11 @@ curl -X POST http://localhost:3000/generate-api-key \
 
 -- adicionar evento para o user 1  -> book now 
 
-curl -X POST http://localhost:3000/v1/1/calendars/ \
+curl -X POST http://localhost:3000/v1/calendars/5 \
 -H "Content-Type: application/json" \
 -H "x-api-key: 49893e5749d8732235450ffc51786c9d9a3cdbc36a231e3dc409e35ba00f" \
 -d '{
-    "summary": "Teste com obs",
+    "summary": "Recebe CalendarID",
     "location": "Android studio",
     "description": "Discord",
     "start": "2024-03-19 21:00:00",
@@ -47,7 +47,7 @@ curl -X POST http://localhost:3000/v1/1/calendars/ \
 retorna:
 {
   "message": "Event added successfully",
-  "eventId": x
+  "calendarID": x
 }
 
 
@@ -63,50 +63,20 @@ curl -X GET "http://localhost:3000/v1/calendars/5?startDate=2024-03-14" -H "Cont
 
 
 
-
-DEPOIS DA CHAMADA POST (book now) chamar logo GET para preencher o calendario com o novo evento (agrupar sempre estes 2 endpoints)
-
---buscar todos os eventos : user 1 p.e
-
-curl -X GET "http://localhost:3000/v1/1/calendars/11" \
--H "Content-Type: application/json" \
--H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
-
-
-retorna info de evento para "preencher calendario":
-[
-  {
-    "summary": "string",
-    "location": "string",
-    "description": "string",
-    "startDateTime": "2024-03-17 19:54:02.212",
-    "endDateTime": "2024-03-17 19:54:02.212"
-  }
-]
+curl -X PATCH "http://localhost:3000/v1/calendars/5?obs=500" \
+     -H "Content-Type: application/json" \
+     -H "x-api-key: 49893e5749d8732235450ffc51786c9d9a3cdbc36a231e3dc409e35ba00f" \
+     -d '{
+           "summary": "Event Updated with obs 2",
+           "location": "New Location",
+           "description": "Updated Description",
+           "start": "2024-03-20 09:00:00",
+           "end": "2024-03-20 10:00:00",
+           "timeZone": "Europe/Lisbon"
+         }'
 
 
 
---atualizar evento do user 1 event id 8 
-
-curl -X PATCH http://localhost:3000/v1/1/calendars/8 \
--H "Content-Type: application/json" \
--H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207" \
--d '{
-    "summary": "Updated Meeting with Alice",
-    "location": "456 Another St, Another City, Another Country",
-    "description": "Discuss further developments.",
-    "start": "2024-03-14 09:00:00",
-    "end": "2024-03-14 10:00:00",
-    "timeZone": "Europe/London"
-}'
-
-
-
-
---eliminar evento 7 para o user 1 -> opcional (evento que esta dentro do calendario, num dia especifico, ir ver google calendar se for preciso ver exemplo pratico)
-
-curl -X DELETE http://localhost:3000/v1/1/calendars/13 \
--H "x-api-key: 88b698b1-7bf8-4214-b970-795749179207"
 
 
 
