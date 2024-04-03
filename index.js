@@ -19,6 +19,7 @@ const YAML = require('yamljs');
 const swaggerDocument = YAML.load('api-docs.yml');
 const cors = require('cors');
 const config = require('./config/config.js'); 
+const bcrypt = require('bcrypt');
 
 const { findOrCreateUser } = require('./userManagement.js');
 
@@ -86,59 +87,67 @@ async function fetchUserInfo(accessToken) {
 }
 
 
-
 app.post('/generate-api-key', async (req, res) => {
-  // Use clientName to identify 
-  const clientName = req.body.clientName;
+  const { clientName, password } = req.body;
 
-  if (!clientName) {
-      return res.status(400).send('Client name is required');
+  if (!clientName || !password) {
+    return res.status(400).send('Client name and password are required');
   }
 
-  // Optionally, you can check if the client name already has an API key
-  const pool = db.getPool();
-  const [existing] = await pool.query('SELECT * FROM api_keys WHERE client_id = ?', [clientName]);
-  if (existing.length > 0) {
-      // Client already has an API key
-      return res.status(409).send('An API key for this client already exists.');
-  }
-
-  // Generate the API key
-  const apiKey = crypto.randomBytes(30).toString('hex');
-
-  // Store the API key and client name in the database
   try {
-      await pool.query('INSERT INTO api_keys (client_id, api_key) VALUES (?, ?)', [clientName, apiKey]);
-      res.json({ message: "API Key generated successfully", apiKey: apiKey });
+    const pool = db.getPool();
+    // Verificar se já existe um cliente com esse nome
+    const [existingClient] = await pool.query('SELECT * FROM api_keys WHERE username = ?', [clientName]);
+    if (existingClient.length > 0) {
+      return res.status(409).send('Client already exists.');
+    }
+
+    // Gerar hash da senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Gerar a chave de API
+    const apiKey = crypto.randomBytes(30).toString('hex');
+
+    // Armazenar o nome do cliente (clientName), a senha hash, e a chave de API no banco de dados
+    await pool.query('INSERT INTO api_keys (username, password, api_key) VALUES (?, ?, ?)', [clientName, hashedPassword, apiKey]);
+    res.json({ message: 'Client registered successfully', apiKey: apiKey });
   } catch (error) {
-      console.error('Failed to store API key:', error);
-      res.status(500).send('Failed to generate API key');
+    console.error('Registration failed:', error);
+    res.status(500).send('Failed to register client');
   }
 });
 
 
-app.get('/retrieve-api-key', async (req, res) => {
-  // Use clientName identify the client
-  const clientName = req.query.clientName;
 
-  if (!clientName) {
-      return res.status(400).send('Client name is required');
+app.post('/retrieve-api-key', async (req, res) => {
+  const { clientName, password } = req.body;
+
+  if (!clientName || !password) {
+    return res.status(400).send('Client name and password are required');
   }
 
   try {
-      const pool = db.getPool();
-      const [result] = await pool.query('SELECT api_key FROM api_keys WHERE client_id = ?', [clientName]);
-      
-      if (result.length === 0) {
-          // No API key found for the client
-          return res.status(404).send('API Key not found for the provided client name');
-      }
+    const pool = db.getPool();
+    // Buscar o cliente pelo nome
+    const [clients] = await pool.query('SELECT * FROM api_keys WHERE username = ?', [clientName]);
+    if (clients.length === 0) {
+      return res.status(404).send('Client not found');
+    }
 
-      // Return the API key to the client
-      res.json({ apiKey: result[0].api_key });
+    const client = clients[0]; // Assumindo que usernames são únicos, pegamos o primeiro resultado
+
+    // Verificar se a senha é correta
+    const isValid = await bcrypt.compare(password, client.password); // Ajustado para usar a coluna correta
+    if (!isValid) {
+      return res.status(401).send('Invalid credentials');
+    }
+
+    // Se a senha for correta, retornar a chave de API
+    res.json({ apiKey: client.api_key }); // Retorna a chave de API armazenada
   } catch (error) {
-      console.error('Failed to retrieve API key:', error);
-      res.status(500).send('Failed to retrieve API key');
+    console.error('Failed to retrieve API key:', error);
+    res.status(500).send('Failed to retrieve API key');
   }
 });
 
@@ -294,43 +303,20 @@ app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-// app.get('/v1/:userId/calendars/:eventId', apiKeyMiddleware, async (req, res) => {
-//   const { userId, eventId } = req.params;
-
-//   try {
-//     const pool = db.getPool();
-//     // Ensure the calendar for this user exists
-//     const [calendars] = await pool.query('SELECT id FROM calendars WHERE userId = ?', [userId]);
-//     if (calendars.length === 0) {
-//       return res.status(404).send('Calendar not found for the given user ID.');
-//     }
-//     const calendarId = calendars[0].id;
-
-//     // Fetch the specific event with only the desired columns
-//     const [events] = await pool.query('SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
-//     if (events.length === 0) {
-//       return res.status(404).send('Event not found for the given event ID.');
-//     }
-
-//     // If the event is found, return the specified fields
-//     res.json(events[0]); // Assuming you want to return the first (and should be the only) event found
-//   } catch (error) {
-//     console.error('Failed to retrieve event:', error);
-//     res.status(500).send('Failed to retrieve event');
-//   }
-// });
-
-
-
 //permite pesquisa por calendario (permite pesquisa de eventos nesse calendario por datas ou localização )
 app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
-  const { startDate, beforeDate, afterDate, location } = req.query;
+  const { startDate, beforeDate, afterDate, location, eventId } = req.query;
 
   try {
     const pool = db.getPool();
     let query = 'SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE calendarId = ?';
     const queryParams = [calendarId];
+
+    if (eventId) {
+      query += ' AND id = ?';
+      queryParams.push(eventId);
+    }
 
     if (startDate) {
       query += ' AND DATE(startDateTime) = ?';
@@ -368,7 +354,7 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 // Updates an existing event in the user's calendar
 app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params; // Assuming you are using calendarId
-  const { eventId, obs } = req.query; // Assuming eventId or obs can be passed as query parameters
+  const { eventId } = req.query; 
   const { summary, location, description, start, end, timeZone } = req.body;
 
   try {
@@ -380,11 +366,9 @@ app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     if (eventId) {
       condition = 'id = ? AND calendarId = ?';
       parameters.unshift(eventId); // Add eventId to the beginning of the parameters array
-    } else if (obs) {
-      condition = 'obs = ? AND calendarId = ?';
-      parameters.unshift(obs); // Add obs to the beginning of the parameters array
-    } else {
-      return res.status(400).send('Either eventId or obs must be provided.');
+    }
+    else {
+      return res.status(400).send('eventId must be provided.');
     }
 
     // Check if the event exists in the user's calendar
@@ -409,15 +393,13 @@ app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-
-
 // Deletes an existing event from the user's calendar
 app.delete('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   const { eventId, obs } = req.query;
 
-  if (!eventId && !obs) {
-    return res.status(400).send('Either eventId or obs is required.');
+  if (!eventId) {
+    return res.status(400).send('eventId');
   }
 
   try {
@@ -427,10 +409,7 @@ app.delete('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     if (eventId) {
       query = 'DELETE FROM events WHERE id = ? AND calendarId = ?';
       values = [eventId, calendarId];
-    } else {
-      query = 'DELETE FROM events WHERE obs = ? AND calendarId = ?';
-      values = [obs, calendarId];
-    }
+    } 
 
     const [result] = await pool.query(query, values);
     if (result.affectedRows === 0) {

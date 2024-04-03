@@ -119,7 +119,7 @@ paths:
                   description: The timezone of the event.
                 obs:
                   type: string
-                  description: An optional unique identifier or reference for the event.
+                  description: An optional description for the event.
               example:
                 summary: Team Meeting
                 location: Office Conference Room
@@ -127,7 +127,7 @@ paths:
                 start: "2024-03-19 09:00:00"
                 end: "2024-03-19 10:00:00"
                 timezone: Europe/Lisbon
-                obs: "123e4567-e89b-12d3-a456-426614174000"
+                obs: "Bring nice clothes "
       responses:
         '201':
           description: Event added successfully.
@@ -159,6 +159,12 @@ paths:
           name: calendarId
           required: true
           description: The ID of the calendar from which events are being retrieved.
+          schema:
+            type: integer
+        - in: query
+          name: eventId
+          required: false
+          description: Retrieve events that has this eventID. 
           schema:
             type: integer
         - in: query
@@ -242,12 +248,6 @@ paths:
           description: The internal ID of the event that is being updated. Either eventId or obs must be provided.
           schema:
             type: integer
-        - in: query
-          name: obs
-          required: false
-          description: The external reference or unique identifier for the event. Either eventId or obs must be provided.
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -311,12 +311,6 @@ paths:
           description: The ID of the event to delete. Required if 'obs' is not provided.
           schema:
             type: integer
-        - in: query
-          name: obs
-          required: false
-          description: An external reference identifier for the event to delete. Required if 'eventId' is not provided.
-          schema:
-            type: string
       responses:
         '200':
           description: Event deleted successfully.
@@ -346,8 +340,8 @@ paths:
     post:
       tags:
       - API Key Management
-      summary: Generate a new API key for a client
-      description: This endpoint generates a new API key for the provided client name and stores it in the database.
+      summary: Register a new client and generate an API key
+      description: This endpoint registers a new client with a username and password, and generates a new API key.
       requestBody:
         required: true
         content:
@@ -355,14 +349,18 @@ paths:
             schema:
               type: object
               properties:
-                clientName:
+                userName:
                   type: string
                   description: The name of the client requesting an API key.
+                password:
+                  type: string
+                  description: The password for the client.
               required:
                 - clientName
+                - password
       responses:
-        '200':
-          description: API Key generated successfully.
+        '201':
+          description: Client registered and API Key generated successfully.
           content:
             application/json:
               schema:
@@ -371,28 +369,36 @@ paths:
                   message:
                     type: string
                     description: Success message.
-                    example: 'API Key generated successfully'
-                  apiKey:
-                    type: string
-                    description: The newly generated API key for the client.
+                    example: 'Client registered successfully'
+        '409':
+          description: Client already exists.
         '400':
-          description: Bad request, client name is required.
+          description: Bad request, client name and password are required.
         '500':
-          description: Internal server error, failed to generate or store the API key.
-  
+          description: Internal server error, failed to register client or generate API key.
+
   /retrieve-api-key:
-    get:
+    post:
       tags:
       - API Key Management
-      summary: Retrieve a lost API key using the client name
-      description: This endpoint allows a client to retrieve their lost API key by providing their client name.
-      parameters:
-        - in: query
-          name: clientName
-          required: true
-          schema:
-            type: string
-          description: The name of the client whose API key needs to be retrieved.
+      summary: Retrieve an API key using client credentials
+      description: This endpoint allows a client to retrieve their API key by providing their username and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                Username:
+                  type: string
+                  description: The username of the client.
+                password:
+                  type: string
+                  description: The password of the client.
+              required:
+                - Username
+                - password
       responses:
         '200':
           description: API key retrieved successfully.
@@ -403,11 +409,13 @@ paths:
                 properties:
                   apiKey:
                     type: string
-                    description: The API key associated with the provided client name.
+                    description: The API key associated with the provided client credentials.
         '404':
-          description: API key not found for the provided client name.
+          description: Client not found.
+        '401':
+          description: Invalid credentials.
         '400':
-          description: Bad request, client name is required.
+          description: Bad request, client name and password are required.
         '500':
           description: Internal server error, failed to retrieve the API key.
 
@@ -416,8 +424,7 @@ components:
     ApiKeyAuth:  
       type: apiKey
       in: header
-      name: x-api-key  # This should match the header name used in your requests
-
+      name: x-api-key  
 tags:
   - name: Service Endpoint
     description: Endpoints related to the main functionality of the service.
