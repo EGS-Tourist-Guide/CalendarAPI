@@ -1,27 +1,43 @@
 version: '3'
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    depends_on:
-      - db
-    environment:
-      DB_HOST: db
-      DB_USER: localhost
-      DB_PASSWORD: password
-      DB_DATABASE: storeDB
+
   db:
     image: mysql:5.7
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: storeDB
-      MYSQL_USER: localhost
-      MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql  # Mount init-db.sql file      
+    networks:
+      - app-network
+ 
+      
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_DATABASE: storeDB
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      CALLBACK_URL: http://localhost:3000/oauth2callback
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   db_data:

@@ -33,8 +33,6 @@ const {OAuth2} = google.auth;
 
 const app = express();
 
-const port = config.server.port;
-
 app.use(express.static(__dirname + '/public'));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -426,7 +424,8 @@ app.delete('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 
+const port = process.env.PORT || 3000;
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`API listening at http://localhost:${port}`);
 });

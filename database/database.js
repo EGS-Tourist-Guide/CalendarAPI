@@ -18,26 +18,36 @@ const config = require('../config/config');
 let pool;
 
 const connect = async () => {
-  pool = mysql.createPool({
-    host: config.database.host,
-    user: config.database.user,
-    password: config.database.password,
-    database: config.database.database
-  });
-  console.log('MySQL pool created.');
-
-
-  try {
-    const connection = await pool.getConnection();
-    if (connection) {
-      console.log('MySQL connection successful.');
-      connection.release(); // It's important to release connections when done
+  let retries = 3; // Number of retries
+  while (retries > 0) {
+    try {
+      pool = mysql.createPool({
+        host: config.database.host || 'localhost',
+        user: config.database.user,
+        password: config.database.password,
+        database: config.database.database,
+        port: '3306'
+      });
+      console.log('MySQL pool created.');
+      
+      const connection = await pool.getConnection();
+      if (connection) {
+        console.log('MySQL connection successful.');
+        connection.release();
+        return; // Return if connection successful
+      }
+    } catch (error) {
+      console.error('Error connecting to MySQL:', error);
+      retries--;
+      if (retries === 0) {
+        throw new Error('Failed to connect to MySQL after multiple retries.');
+      }
+      console.log(`Retrying connection... ${retries} retries left.`);
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before retrying
     }
-  } catch (error) {
-    console.error('Error connecting to MySQL:', error);
-    throw error; 
   }
 };
+
 
 const disconnect = async () => {
   if (pool) {
