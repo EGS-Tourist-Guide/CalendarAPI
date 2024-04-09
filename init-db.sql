@@ -20,6 +20,8 @@ CREATE TABLE `storeDB`.`users` (
   UNIQUE KEY `email` (`email`)
 );
 
+INSERT INTO `storeDB`.`users` (`google_id`, `email`, `name`) VALUES ('superuser_id', 'superuser@example.com', 'Super User');
+
 CREATE TABLE `storeDB`.`calendars` (
   `id` int NOT NULL AUTO_INCREMENT,
   `userId` int NOT NULL,
@@ -29,8 +31,10 @@ CREATE TABLE `storeDB`.`calendars` (
   CONSTRAINT `calendars_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `storeDB`.`users` (`id`)
 );
 
+INSERT INTO `storeDB`.`calendars` (`userId`, `name`) VALUES (1, 'Super User Calendar');
+
 CREATE TABLE `storeDB`.`events` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` CHAR(36) NOT NULL,
   `calendarId` int DEFAULT NULL,
   `summary` varchar(255) NOT NULL,
   `location` varchar(255) DEFAULT NULL,

@@ -15,39 +15,37 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 const config = require('../config/config');
 
-let pool;
+
+let pool = mysql.createPool({
+  host: config.database.host || 'localhost',
+  user: config.database.user,
+  password: config.database.password,
+  database: config.database.database,
+  port: config.database.port || '3306'
+});
 
 const connect = async () => {
-  let retries = 3; // Number of retries
-  while (retries > 0) {
+  const maxRetries = 5;
+  const baseDelay = 2000; // Base delay in ms
+
+  for (let i = 0; i < maxRetries; i++) {
     try {
-      pool = mysql.createPool({
-        host: config.database.host || 'localhost',
-        user: config.database.user,
-        password: config.database.password,
-        database: config.database.database,
-        port: '3306'
-      });
-      console.log('MySQL pool created.');
-      
+      console.log('Attempting to connect to MySQL...');
       const connection = await pool.getConnection();
-      if (connection) {
-        console.log('MySQL connection successful.');
-        connection.release();
-        return; // Return if connection successful
-      }
+      console.log('MySQL connection successful.');
+      connection.release();
+      break; // Exit the loop if the connection is successful
     } catch (error) {
       console.error('Error connecting to MySQL:', error);
-      retries--;
-      if (retries === 0) {
+      if (i === maxRetries - 1) { // Check if last retry
         throw new Error('Failed to connect to MySQL after multiple retries.');
       }
-      console.log(`Retrying connection... ${retries} retries left.`);
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before retrying
+      const delay = baseDelay * Math.pow(2, i); // Exponential backoff
+      console.log(`Retrying connection after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 };
-
 
 const disconnect = async () => {
   if (pool) {

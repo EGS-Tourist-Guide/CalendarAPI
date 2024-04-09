@@ -18,9 +18,8 @@ const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const swaggerDocument = YAML.load('api-docs.yml');
 const cors = require('cors');
-const config = require('./config/config.js'); 
 const bcrypt = require('bcrypt');
-
+const moment = require('moment'); 
 const { findOrCreateUser } = require('./userManagement.js');
 
 const corsOptions = {
@@ -248,19 +247,21 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
   try {
     const pool = db.getPool();
 
+    // Check if the user already has a calendar
     const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [userId]);
 
     if (existingCalendars.length > 0) {
-      // Correctly handle the case where a calendar exists
-      return res.status(400).json({
+      // If a calendar exists, return the existing calendar ID
+      return res.status(200).json({
         message: "User already has a calendar.",
+        calendarId: existingCalendars[0].id  // Assuming the first entry is the relevant one
       });
     }
 
-    // Proceed to insert a new calendar if none exists
+    // If no calendar exists, proceed to create a new one
     const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [userId]);
 
-    // Use insertResult to get the new calendar ID
+    // Retrieve the new calendar ID
     const calendarId = insertResult.insertId;
 
     // Respond with the success message and the new calendar's ID
@@ -278,21 +279,31 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 
+
 // Insere um novo evento no calendário do usuário
 app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
-  const calendarId = req.params.calendarId; // Use the calendarId from the route parameter
-  const { summary, location, description, start, end, timeZone, obs } = req.body;
+  const { calendarId } = req.params;
+  const { eventId, summary, location, description, startDate, endDate, timeZone, obs } = req.body;
 
   try {
     const pool = db.getPool();
 
-    // Directly insert the event using the provided calendarId, assuming validation or further checks are handled elsewhere
-    const query = 'INSERT INTO events (calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    const values = [calendarId, summary, location, description, start, end, timeZone, obs || null]; // Use 'obs' from the request body or null if not provided
+    // Check if the provided event ID already exists
+    const checkId = await pool.query('SELECT id FROM events WHERE id = ?', [eventId]);
+    if (checkId[0].length > 0) {
+      return res.status(409).json({ message: "Event ID already exists" });
+    }
 
-    const [insertResult] = await pool.query(query, values);
-    const newEventId = insertResult.insertId;
-    res.status(201).json({ message: "Event added successfully", newEventId: newEventId}); 
+    // Convert date times to MySQL datetime format 
+    const formatStart = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
+    const formatEnd = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
+
+    // Insert the event with the provided ID
+    const query = 'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const values = [eventId, calendarId, summary, location, description, formatStart, formatEnd, timeZone, obs || null];
+
+    await pool.query(query, values);
+    res.status(201).json({ message: "Event added successfully", eventId: eventId });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -301,7 +312,7 @@ app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-//permite pesquisa por calendario (permite pesquisa de eventos nesse calendario por datas ou localização )
+
 app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   const { startDate, beforeDate, afterDate, location, eventId } = req.query;
@@ -317,16 +328,22 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     }
 
     if (startDate) {
+      // Parse ISO date and format to MySQL date
+      const formattedStartDate = moment(startDate).format('YYYY-MM-DD');
       query += ' AND DATE(startDateTime) = ?';
-      queryParams.push(startDate);
+      queryParams.push(formattedStartDate);
     }
     if (beforeDate) {
+      // Parse ISO date and format to MySQL date
+      const formattedBeforeDate = moment(beforeDate).format('YYYY-MM-DD');
       query += ' AND DATE(endDateTime) < ?';
-      queryParams.push(beforeDate);
+      queryParams.push(formattedBeforeDate);
     }
     if (afterDate) {
+      // Parse ISO date and format to MySQL date
+      const formattedAfterDate = moment(afterDate).format('YYYY-MM-DD');
       query += ' AND DATE(startDateTime) > ?';
-      queryParams.push(afterDate);
+      queryParams.push(formattedAfterDate);
     }
     if (location) {
       query += ' AND location = ?';
@@ -347,27 +364,20 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 });
 
 
-
-//retirar event id e ir à coluna obs de eventos que tem o id do evento do Luis?
 // Updates an existing event in the user's calendar
-app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
-  const { calendarId } = req.params; // Assuming you are using calendarId
-  const { eventId } = req.query; 
+app.patch('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
+  const { calendarId, eventId } = req.params;  // Extract both calendarId and eventId from URL
   const { summary, location, description, start, end, timeZone } = req.body;
 
   try {
     const pool = db.getPool();
+    // Format dates using Moment.js to ensure they are in MySQL datetime format
+    const formattedStart = moment(start).format('YYYY-MM-DD HH:mm:ss');
+    const formattedEnd = moment(end).format('YYYY-MM-DD HH:mm:ss');
 
-    // Determine the condition based on whether eventId or obs is provided
-    let condition = '';
-    let parameters = [calendarId];
-    if (eventId) {
-      condition = 'id = ? AND calendarId = ?';
-      parameters.unshift(eventId); // Add eventId to the beginning of the parameters array
-    }
-    else {
-      return res.status(400).send('eventId must be provided.');
-    }
+    // Prepare SQL query conditions and parameters
+    let condition = 'id = ? AND calendarId = ?';
+    let parameters = [eventId, calendarId]; // Setup parameters with eventId first as per SQL condition
 
     // Check if the event exists in the user's calendar
     const [eventResult] = await pool.query(`SELECT id FROM events WHERE ${condition}`, parameters);
@@ -375,13 +385,13 @@ app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
       return res.status(404).send(`Event not found in the user's calendar.`);
     }
 
-    // Proceed to update the event
-    const updateParameters = [summary, location, description, start, end, timeZone, ...parameters];
+    // Proceed to update the event with the provided details
+    const updateParameters = [summary, location, description, formattedStart, formattedEnd, timeZone, ...parameters];
     await pool.query(
       `UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE ${condition}`,
       updateParameters
     );
-    res.json({ message: "Event updated successfully", updatedEventId: eventResult[0].id });
+    res.json({ message: "Event updated successfully", updatedEventId: eventId });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
@@ -389,37 +399,31 @@ app.patch('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 });
 
 
-
-
 // Deletes an existing event from the user's calendar
-app.delete('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
-  const { calendarId } = req.params;
-  const { eventId, obs } = req.query;
-
-  if (!eventId) {
-    return res.status(400).send('eventId');
-  }
+app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
+  const { calendarId, eventId } = req.params; // Extracting eventId and calendarId from the URL
 
   try {
     const pool = db.getPool();
 
-    let query, values;
-    if (eventId) {
-      query = 'DELETE FROM events WHERE id = ? AND calendarId = ?';
-      values = [eventId, calendarId];
-    } 
-
+    // Prepare and execute the DELETE query
+    const query = 'DELETE FROM events WHERE id = ? AND calendarId = ?';
+    const values = [eventId, calendarId];
     const [result] = await pool.query(query, values);
+
+    // Check if the DELETE operation affected any rows
     if (result.affectedRows === 0) {
       return res.status(404).send('Event not found in the calendar.');
     }
 
-    res.json({ message: "Event deleted successfully", eventId: eventId || obs });
+    // Send a success response
+    res.json({ message: "Event deleted successfully", eventId: eventId });
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
   }
 });
+
 
 
 

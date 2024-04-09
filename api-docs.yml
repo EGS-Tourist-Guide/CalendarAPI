@@ -1,29 +1,30 @@
 openapi: 3.0.0
-servers:
-  - url: http://localhost:3000/
 info:
   title: Calendar API
   version: "1.0"
+servers:
+  - url: http://localhost:3000/
 security:
   - ApiKeyAuth: []
 paths:
   /v1/login:
     get:
       tags:
-      - Service Endpoint
+        - Service Endpoint
       summary: Redirect to Google's OAuth 2.0 server
       description: Initiates the OAuth 2.0 authentication flow by redirecting the user to Google's OAuth 2.0 server.
       responses:
         '302':
-          description: Redirects to Google OAuth server
+          description: Redirects to Google OAuth server.
         '400':
-          description: Bad request, check if parameters are correct
+          description: Bad request, check if parameters are correct.
         '500':
-          description: Internal server error
+          description: Internal server error.
+
   /oauth2callback:
     get:
       tags:
-      - Service Endpoint  
+        - Service Endpoint
       summary: OAuth 2.0 Callback Endpoint
       description: >
         Handles the callback from Google's OAuth 2.0 server. This endpoint exchanges
@@ -35,10 +36,10 @@ paths:
           description: Found. Redirect to an intermediate success page.
           headers:
             Location:
+              description: Redirect location to the success page with the user ID as a query parameter.
               schema:
                 type: string
-                example: /auth-success.html?userId=12345
-              description: Redirect location to the success page with the user ID as a query parameter.
+                example: '/auth-success.html?userId=12345'
         '400':
           description: Bad request, failed to exchange authorization code.
         '500':
@@ -47,8 +48,8 @@ paths:
   /v1/{userId}/:
     post:
       tags:
-      - Service Endpoint    
-      summary: Create a new calendar for the user and returns the calendarID associated to the user
+        - Service Endpoint
+      summary: Create a new calendar for the user and returns the calendar ID associated to the user.
       description: Creates a new calendar associated with the specified user within the application.
       parameters:
         - in: path
@@ -58,6 +59,20 @@ paths:
           schema:
             type: integer
       responses:
+        '200':
+          description: User already has a calendar; existing calendar ID returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Informational message.
+                    example: 'User already has a calendar.'
+                  calendarId:
+                    type: integer
+                    description: The ID of the existing calendar.
         '201':
           description: Calendar successfully created.
           content:
@@ -71,7 +86,7 @@ paths:
                     example: 'Calendar created successfully.'
                   calendarId:
                     type: integer
-                    description: The calendarId the user.
+                    description: The calendar ID assigned to the user.
         '400':
           description: Bad Request. User already has a calendar.
         '404':
@@ -84,7 +99,7 @@ paths:
       tags:
       - Service Endpoint
       summary: Inserts a new event into the user's calendar with the provided details.
-      description: Adds the event with the provided details to the user's calendar if it exists. Optionally includes an 'obs' field to associate the event with an external reference or ID.
+      description: Adds the event with the provided details to the user's calendar if it exists. 
       parameters:
         - in: path
           name: calendarId
@@ -99,6 +114,9 @@ paths:
             schema:
               type: object
               properties:
+                eventId:
+                  type: integer
+                  description: The unique identifier for the event.
                 summary:
                   type: string
                   description: A short summary of the event.
@@ -110,23 +128,20 @@ paths:
                   description: A detailed description of the event.
                 start:
                   type: string
-                  description: The start date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'.
+                  description: The start date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
                 end:
                   type: string
-                  description: The end date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'.
-                timezone:
-                  type: string
-                  description: The timezone of the event.
+                  description: The end date and time of the event in the format 'YYYY-MM-DD HH:MM:SS'or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
                 obs:
                   type: string
                   description: An optional description for the event.
               example:
-                summary: Team Meeting
-                location: Office Conference Room
-                description: Discuss project updates and next steps.
+                eventId: b1c4a89e-4505-5e3c-b57f-dc92627d011e
+                summary: "Team Meeting"
+                location: "Office Conference Room"
+                description: "Discuss project updates and next steps."
                 start: "2024-03-19 09:00:00"
                 end: "2024-03-19 10:00:00"
-                timezone: Europe/Lisbon
                 obs: "Bring nice clothes "
       responses:
         '201':
@@ -170,21 +185,21 @@ paths:
         - in: query
           name: startDate
           required: false
-          description: Retrieve events that start on this date (YYYY-MM-DD).
+          description: Retrieve events that start on this date (YYYY-MM-DD) or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
           schema:
             type: string
             format: date
         - in: query
           name: beforeDate
           required: false
-          description: Retrieve events that end before this date (YYYY-MM-DD).
+          description: Retrieve events that end before this date (YYYY-MM-DD)or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
           schema:
             type: string
             format: date
         - in: query
           name: afterDate
           required: false
-          description: Retrieve events that start after this date (YYYY-MM-DD).
+          description: Retrieve events that start after this date (YYYY-MM-DD) or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
           schema:
             type: string
             format: date
@@ -215,26 +230,27 @@ paths:
                       description: A detailed description of the event.
                     startDateTime:
                       type: string
-                      description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
+                      description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format
                     endDateTime:
                       type: string
-                      description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
+                      description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format
                 example:
                   - summary: Team Meeting
                     location: Office Conference Room
                     description: Discuss project updates and next steps.
-                    startDateTime: "2024-03-19 09:00:00"
-                    endDateTime: "2024-03-19 10:00:00"
+                    startDateTime: "2024-03-19T11:00:00Z"
+                    endDateTime: "2024-03-19T11:00:00Z"
         '404':
           description: No events found matching the criteria or calendar not found.
         '500':
           description: Internal Server Error. Failed to retrieve events.
 
+  /v1/calendars/{calendarId}/{eventId}:
     patch:
       tags:
       - Service Endpoint
       summary: Updates an existing event in a calendar
-      description: Updates the event with the provided details in the specified calendar. The event can be identified by either an internal eventId or an external reference obs.
+      description: Updates the event with the provided details in the specified calendar.
       parameters:
         - in: path
           name: calendarId
@@ -242,12 +258,12 @@ paths:
           description: The ID of the calendar containing the event to be updated.
           schema:
             type: integer
-        - in: query
+        - in: path
           name: eventId
-          required: false
-          description: The internal ID of the event that is being updated. Either eventId or obs must be provided.
+          required: true
+          description: The ID of the event that is being updated.
           schema:
-            type: integer
+            type: integer 
       requestBody:
         required: true
         content:
@@ -267,16 +283,13 @@ paths:
                 start:
                   type: string
                   format: 'date-time'
-                  description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
-                  example: '2024-03-19 10:00:00'
+                  description: The start date and time of the event in ISO 8601 format.
+                  example: '2024-03-19T10:00:00Z'
                 end:
                   type: string
                   format: 'date-time'
-                  description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format.
-                  example: '2024-03-19 11:00:00'
-                timezone:
-                  type: string
-                  description: The timezone of the event. Example values can be 'UTC', 'Europe/London', etc.
+                  description: The end date and time of the event in ISO 8601 format.
+                  example: '2024-03-19T11:00:00Z'
       responses:
         '200':
           description: Event updated successfully.
@@ -288,10 +301,14 @@ paths:
                   message:
                     type: string
                     example: 'Event updated successfully'
+                  updatedEventId:
+                    type: string
+                    description: The eventId of the updated event.
+                    example: '456'
         '404':
-          description: Calendar not found for the given calendar ID or event not found in the calendar.
+          description: Calendar or event not found for the given IDs.
         '500':
-          description: Failed to process request.
+          description: Failed to process request due to server error.
 
     delete:
       tags:
@@ -308,7 +325,7 @@ paths:
         - in: query
           name: eventId
           required: false
-          description: The ID of the event to delete. Required if 'obs' is not provided.
+          description: The ID of the event to delete. 
           schema:
             type: integer
       responses:
@@ -324,10 +341,7 @@ paths:
                     example: 'Event deleted successfully'
                   eventId:
                     type: integer
-                    description: The ID of the deleted event. Null if deleted by 'obs'.
-                  obs:
-                    type: string
-                    description: The external reference identifier of the deleted event. Null if deleted by 'eventId'.
+                    description: The ID of the deleted event. 
         '400':
           description: Bad Request. Neither eventId nor obs was provided.
         '404':
