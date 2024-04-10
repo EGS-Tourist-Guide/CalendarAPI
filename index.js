@@ -174,9 +174,6 @@ const apiKeyMiddleware = async (req, res, next) => {
 
 
 
-
-
-
 // Redirect to Google's OAuth 2.0 server
 app.get('/v1/login', (req, res) => {
   //console.log(`Current directory: ${process.cwd()}`);
@@ -209,7 +206,6 @@ app.get('/oauth2callback', async (req, res) => {
   //Subsequently, the user's information is fetched and stored in the database.
   //Once this process is complete, a session can be created or updated to indicate that the user is authenticated, 
   //allowing them to access protected routes without needing to re-authenticate for subsequent requests during the session
-
 
   // Fetch user information using the tokens
   const userInfo = await fetchUserInfo(tokens.access_token); // retrieve the user's profile information using the access token obtained from Google's OAuth 2.0 server
