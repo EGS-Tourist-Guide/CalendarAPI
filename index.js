@@ -307,11 +307,13 @@ app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 });
 
 
-
+function normalizeString(input) {
+  return input.toLowerCase().replace(/[\s,]+/g, ''); // Remove espaços e vírgulas e converte para minúsculas
+}
 
 app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
-  const { startDate, beforeDate, afterDate, location, eventId } = req.query;
+  let { startDate, beforeDate, afterDate, location, eventId } = req.query;
 
   try {
     const pool = db.getPool();
@@ -342,7 +344,8 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
       queryParams.push(formattedAfterDate);
     }
     if (location) {
-      query += ' AND location = ?';
+      location = normalizeString(location); 
+      query += ' AND REPLACE(LOWER(location), " ", "") = ?';
       queryParams.push(location);
     }
 
@@ -358,6 +361,9 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     res.status(500).send('Failed to retrieve events');
   }
 });
+
+
+
 
 
 // Updates an existing event in the user's calendar
