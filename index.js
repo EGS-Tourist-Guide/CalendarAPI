@@ -279,7 +279,7 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 // Insere um novo evento no calendário do usuário
 app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
-  const { eventId, summary, location, description, startDate, endDate, timeZone, obs } = req.body;
+  const { eventId, summary, location, description, start, end, timeZone, obs } = req.body;
 
   try {
     const pool = db.getPool();
@@ -291,8 +291,8 @@ app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     }
 
     // Convert date times to MySQL datetime format 
-    const formatStart = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
-    const formatEnd = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
+    const formatStart = moment(start).format('YYYY-MM-DD HH:mm:ss');
+    const formatEnd = moment(end).format('YYYY-MM-DD HH:mm:ss');
 
     // Insert the event with the provided ID
     const query = 'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';

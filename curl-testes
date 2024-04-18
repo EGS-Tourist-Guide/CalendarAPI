@@ -22,13 +22,6 @@ curl -X POST http://localhost:3000/v1/2 \
 
 
 
-retorna:
-{
-  "message": "Calendar created successfully",
-  "calendarId": calendarID
-}
-
-
 
 
 -- adicionar evento para o calendarID 2
@@ -37,7 +30,7 @@ curl -X POST http://localhost:3000/v1/calendars/2 \
   -H "Content-Type: application/json" \
   -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f" \
   -d '{
-    "eventId": "7878787-4505-5e3c-b57f-dc92627d011e",
+    "eventId": "2222-4505-5e3c-b57f-dc92627d011e",
     "summary": "EGS",
     "location": "Deti",
     "description": "Discuss project milestones.",
@@ -48,34 +41,22 @@ curl -X POST http://localhost:3000/v1/calendars/2 \
   }'
 
 
-retorna:
-{
-  "message": "Event added successfully",
-  "eventId": x
-}
-
 
 --Pesquisa sem query Parameters
 curl -X GET "http://localhost:3000/v1/calendars/2" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
 
 --pesquisa com location
-curl -X GET "http://localhost:3000/v1/calendars/2?location=NewLocationDeti" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
-
+curl -X GET "http://localhost:3000/v1/calendars/2?location=New+Location+deti" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
 
 
 --pesquisa com startDate
-curl -X GET "http://localhost:3000/v1/calendars/2?startDate=2024-03-20T09:00:00.000Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
+curl -X GET "http://localhost:3000/v1/calendars/2?startDate=2024-04-17T11:11:11.111Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
 
 ----pesquisa com beforeDate
-curl -X GET "http://localhost:3000/v1/calendars/2?beforeDate=2024-03-21T10:10:00.000Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
+curl -X GET "http://localhost:3000/v1/calendars/2?beforeDate=2024-04-17T10:10:00.000Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
 
 ----pesquisa com afterDate
 curl -X GET "http://localhost:3000/v1/calendars/2?afterDate=2024-03-19T10:10:00.000Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
-
-
-
-
-curl -X GET "http://localhost:3000/v1/calendars/2?afterDate=2024-04-11T14:00:00.001Z" -H "Content-Type: application/json" -H "x-api-key: b73934448d08426cda6d8b8641f39ae6fc553c6cfae4d24e67836ce6569f"
 
 
 --pesquisa com eventID
