@@ -191,49 +191,46 @@ app.get('/v1/login', (req, res) => {
   }
 });
 
-
 app.get('/oauth2callback', async (req, res) => {
-  // This extracts the authorization code from the query parameters of the request (req.query.code). 
-  //The code is then exchanged with Google's OAuth 2.0 server for access and refresh tokens.
-  const {tokens} = await oauth2Client.getToken(req.query.code);
-  
-  //This sets the credentials (access token, refresh token, etc.) obtained from Google's OAuth 2.0 server to the OAuth2 client instance, 
-  //allowing my application to make authorized requests on behalf of the user.
+  // Extrai o código de autorização dos parâmetros da query
+  const { tokens } = await oauth2Client.getToken(req.query.code);
   oauth2Client.setCredentials(tokens);
 
+  try {
+      // Obtém informações do usuário usando os tokens
+      const userInfo = await fetchUserInfo(tokens.access_token);
 
-  //After the user successfully authenticates with Google via OAuth, their OAuth tokens are obtained and stored.
-  //Subsequently, the user's information is fetched and stored in the database.
-  //Once this process is complete, a session can be created or updated to indicate that the user is authenticated, 
-  //allowing them to access protected routes without needing to re-authenticate for subsequent requests during the session
+      // Tenta encontrar ou criar um usuário na base de dados
+      const user = await findOrCreateUser({
+          googleId: userInfo.id,
+          email: userInfo.email,
+          name: userInfo.name,
+      });
 
-  // Fetch user information using the tokens
-  const userInfo = await fetchUserInfo(tokens.access_token); // retrieve the user's profile information using the access token obtained from Google's OAuth 2.0 server
+      const pool = db.getPool();
 
-  // Step 1: Save user info to `users` table or get existing user
-  let user = await findOrCreateUser({
-    googleId: userInfo.id,
-    email: userInfo.email,
-    name: userInfo.name,
+      // Verifica se o usuário já possui um calendário
+      const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [user.id]);
+
+      let calendarId;
+      if (existingCalendars.length > 0) {
+          // Se já existe um calendário, utiliza o ID existente
+          calendarId = existingCalendars[0].id;
+      } else {
+          // Se não existe um calendário, cria um novo
+          const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [user.id]);
+          calendarId = insertResult.insertId;
+      }
+
+      // Redireciona o usuário para uma página de sucesso com informações relevantes
+      const deepLinkUrl = `/auth-success.html?userId=${user.id}&calendarId=${calendarId}`;
+      res.redirect(deepLinkUrl);
+  } catch (error) {
+      console.error('Error processing request:', error);
+      res.status(500).send('Failed to process request');
+  }
 });
 
-  // // Step 2: Save OAuth tokens to `storeDB` table
-  // await saveUserTokens({
-  //     userId: user.id, // ID from `users` table
-  //     accessToken: tokens.access_token,
-  //     refreshToken: tokens.refresh_token,
-  //     tokenExpiry: new Date(tokens.expiry_date).toISOString().slice(0, 19).replace('T', ' '),
-      
-  // });
-
-    // Instead of sending the user data back as JSON, redirect to an intermediate page
-    // The page will then handle redirecting back to the app with the necessary data
-    // Redirecting to an intermediate page with user's ID as a parameter
-    const deepLinkUrl = `/auth-success.html?userId=${user.id}`;
-    res.redirect(deepLinkUrl);    
-
-    //res.json({ message: 'Authentication successful!', token: user.id });
-});
 
 
 //Create a new calendar for the user
