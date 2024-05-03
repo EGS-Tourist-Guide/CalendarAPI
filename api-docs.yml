@@ -94,7 +94,7 @@ paths:
         '500':
           description: Internal Server Error. Failed to create calendar.
 
-  /v1/calendars/:calendarId:
+  /v1/calendars/{calendarId}/:
     post:
       tags:
       - Service Endpoint
@@ -181,7 +181,7 @@ paths:
           required: false
           description: Retrieve events that has this eventID. 
           schema:
-            type: integer
+            type: string
         - in: query
           name: startDate
           required: false
@@ -263,7 +263,7 @@ paths:
           required: true
           description: The ID of the event that is being updated.
           schema:
-            type: integer 
+            type: string 
       requestBody:
         required: true
         content:
@@ -322,12 +322,12 @@ paths:
           description: The ID of the calendar from which the event is being deleted.
           schema:
             type: integer
-        - in: query
+        - in: path
           name: eventId
           required: false
           description: The ID of the event to delete. 
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Event deleted successfully.
@@ -340,7 +340,7 @@ paths:
                     type: string
                     example: 'Event deleted successfully'
                   eventId:
-                    type: integer
+                    type: string
                     description: The ID of the deleted event. 
         '400':
           description: Bad Request. Neither eventId nor obs was provided.
