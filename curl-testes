@@ -1,3 +1,9 @@
+--kubernettes tutorial:
+docker build --network=host -t registry.deti/egs-touristguide/calendar:v1 .s
+docker push registry.deti/egs-touristguide/calendar:v1
+kubectl apply -f deployment.yaml
+
+
 
 --gerar api keys
 curl -X POST http://localhost:3000/generate-api-key \
