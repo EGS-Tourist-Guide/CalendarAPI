@@ -1,7 +1,26 @@
 --kubernettes tutorial:
-docker build --network=host -t registry.deti/egs-touristguide/calendar:v1 .s
+kubectl create namespace egs-touristguide (ja existe)
+
+docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v1 .
 docker push registry.deti/egs-touristguide/calendar:v1
-kubectl apply -f deployment.yaml
+kubectl apply -f deployment.yaml -n egs-touristguide
+
+kubectl delete -f deployment.yaml -n egs-touristguide
+kubectl delete pvc mysql-pv-claim -n egs-touristguide
+kubectl delete configmap mysql-init-db -n egs-touristguide
+kubectl delete deployment mysql calendar-app -n egs-touristguide
+kubectl delete pod <nome-do-pod> -n egs-touristguide --grace-period=0 --force
+
+kubectl get pvc -n egs-touristguide
+kubectl get pods -n egs-touristguide
+kubectl describe pod <name_pod> -n egs-touristguide
+kubectl logs <name_pod> -n egs-touristguide
+kubectl get deployments -n egs-touristguide
+kubectl get svc -n egs-touristguide
+kubectl create configmap mysql-init-db --from-file=init-db.sql=./database/init-db.sql -n egs-touristguide
+
+
+kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o jsonpath='{.items[0].metadata.name}') -n egs-touristguide -- curl -X POST localhost:3000/generate-api-key -H "Content-Type: application/json" -d '{"clientName": "NewClient", "password": "SecurePassword123"}'
 
 
 
@@ -10,6 +29,9 @@ curl -X POST http://localhost:3000/generate-api-key \
 -H "Content-Type: application/json" \
 -d '{"clientName":"Marta", "password":"123"}'
 
+curl -X POST http://10.42.1.198:300/generate-api-key \
+-H "Content-Type: application/json" \
+-d '{"clientName":"Marta", "password":"123"}'
 
 
 --buscar API Key

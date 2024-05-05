@@ -1,7 +1,17 @@
+-- Drop the existing database if it exists
+DROP DATABASE IF EXISTS storeDB;
+
+-- Create the database
 CREATE DATABASE IF NOT EXISTS storeDB;
 USE storeDB;
 
-CREATE TABLE `storeDB`.`api_keys` (
+-- Drop tables if they exist
+DROP TABLE IF EXISTS `api_keys`;
+DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `calendars`;
+DROP TABLE IF EXISTS `events`;
+
+CREATE TABLE IF NOT EXISTS `storeDB`.`api_keys` (
   `id` int NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -10,7 +20,7 @@ CREATE TABLE `storeDB`.`api_keys` (
   UNIQUE KEY `username` (`username`)
 );
 
-CREATE TABLE `storeDB`.`users` (
+CREATE TABLE IF NOT EXISTS `storeDB`.`users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `google_id` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
@@ -22,7 +32,7 @@ CREATE TABLE `storeDB`.`users` (
 
 INSERT INTO `storeDB`.`users` (`google_id`, `email`, `name`) VALUES ('superuser_id', 'superuser@example.com', 'Super User');
 
-CREATE TABLE `storeDB`.`calendars` (
+CREATE TABLE IF NOT EXISTS `storeDB`.`calendars` (
   `id` int NOT NULL AUTO_INCREMENT,
   `userId` int NOT NULL,
   `name` varchar(255) DEFAULT NULL,
@@ -33,7 +43,7 @@ CREATE TABLE `storeDB`.`calendars` (
 
 INSERT INTO `storeDB`.`calendars` (`userId`, `name`) VALUES (1, 'Super User Calendar');
 
-CREATE TABLE `storeDB`.`events` (
+CREATE TABLE IF NOT EXISTS `storeDB`.`events` (
   `id` CHAR(36) NOT NULL,
   `calendarId` int DEFAULT NULL,
   `summary` varchar(255) NOT NULL,

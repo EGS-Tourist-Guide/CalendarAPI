@@ -7,7 +7,7 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pv-claim
+  name: mysql-pv-claim3
   namespace: egs-touristguide
 spec:
   storageClassName: longhorn
@@ -36,6 +36,8 @@ spec:
       containers:
         - name: mysql
           image: mysql:5.7
+          args:
+            - "--ignore-db-dir=lost+found"
           env:
             - name: MYSQL_ROOT_PASSWORD
               value: "password"
@@ -46,11 +48,15 @@ spec:
           volumeMounts:
             - name: mysql-storage
               mountPath: /var/lib/mysql
+            - name: init-db-script
+              mountPath: /docker-entrypoint-initdb.d
       volumes:
         - name: mysql-storage
           persistentVolumeClaim:
-            claimName: mysql-pv-claim
-
+            claimName: mysql-pv-claim3
+        - name: init-db-script
+          configMap:
+            name: mysql-init-db
 ---
 apiVersion: v1
 kind: Service
