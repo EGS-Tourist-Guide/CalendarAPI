@@ -4,8 +4,7 @@
 //http://touristguide/api-docs
 
 
-//lsof -i :3000
-//kill -9 12345
+
 //exemplos teste endpoint create calendar
 //curl -X POST http://localhost:3000/v1/1/
 //  > -H "Content-Type: application/json" \

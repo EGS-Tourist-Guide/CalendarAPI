@@ -27,7 +27,7 @@ services:
       DB_DATABASE: ${DB_DATABASE}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      CALLBACK_URL: https://touristguide.chickenkiller.com:3000/oauth2callback
+      CALLBACK_URL: https://www.touristguide.work.gd/oauth2callback
     depends_on:
       - db
     networks:

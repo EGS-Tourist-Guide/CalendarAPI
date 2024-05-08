@@ -14,16 +14,18 @@ kubectl delete deployment mysql calendar-app -n egs-touristguide
 kubectl delete pod <nome-do-pod> -n egs-touristguide 
 kubectl delete configmap mysql-init-db -n egs-touristguide
 
-
+kubectl logs traefik-f4564c4f4-sfkhg -n kube-system
 kubectl get pvc -n egs-touristguide
 kubectl get pods -n egs-touristguide
 kubectl describe pod <name_pod> -n egs-touristguide
 kubectl logs <name_pod> -n egs-touristguide
 kubectl get deployments -n egs-touristguide
+
 kubectl get svc -n egs-touristguide
+kubectl get svc calendar-app-service -n egs-touristguide -o yaml
 
 
-kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o jsonpath='{.items[0].metadata.name}') -n egs-touristguide -- curl -X POST localhost:3000/generate-api-key -H "Content-Type: application/json" -d '{"clientName": "NewClient", "password": "SecurePassword123"}'
+kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o jsonpath='{.items[0].metadata.name}') -n egs-touristguide -- curl -X POST localhost:3000/generate-api-key -H "Content-Type: application/json" -d '{"clientName": "Marta", "password": "123"}'
 
 
 
@@ -43,7 +45,7 @@ curl -k -X POST http://touristguide/generate-api-key \
 
 
 --buscar API Key
-curl -X POST http://localhost:3000/retrieve-api-key \
+curl -X POST http://touristguide/retrieve-api-key \
      -H "Content-Type: application/json" \
      -d '{"clientName":"Marta", "password":"123"}'
 

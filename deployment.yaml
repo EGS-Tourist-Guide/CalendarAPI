@@ -105,7 +105,7 @@ spec:
             - name: GOOGLE_CLIENT_SECRET
               value: "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"
             - name: CALLBACK_URL
-              value: "https://touristguide.chickenkiller.com:3000/oauth2callback" #trocar para dominio que criei FREEDNS
+              value: "https://ns10.dnsexit.com/oauth2callback" #trocar para dominio que criei FREEDNS
           ports:
             - containerPort: 3000
 
@@ -119,10 +119,11 @@ spec:
   selector:
     app: calendar-app
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 3000
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
   type: LoadBalancer
+
 
 
 
@@ -137,7 +138,6 @@ metadata:
     traefik.ingress.kubernetes.io/redirect-entry-point: https
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
-  ingressClassName: traefik  
   rules:
   - host: touristguide
     http:
@@ -148,4 +148,4 @@ spec:
           service:
             name: calendar-app-service
             port:
-              number: 80
+              number: 3000
