@@ -90,7 +90,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v1
+          image: registry.deti/egs-touristguide/calendar:v5
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -105,7 +105,7 @@ spec:
             - name: GOOGLE_CLIENT_SECRET
               value: "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"
             - name: CALLBACK_URL
-              value: "http://localhost:3000/oauth2callback"
+              value: "https://touristguide.chickenkiller.com:3000/oauth2callback" #trocar para dominio que criei FREEDNS
           ports:
             - containerPort: 3000
 
@@ -120,6 +120,32 @@ spec:
     app: calendar-app
   ports:
     - protocol: TCP
-      port: 3000
+      port: 80
       targetPort: 3000
   type: LoadBalancer
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: touristguide-k3s
+  namespace: egs-touristguide
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/frontend-entry-points: http,https
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
+    traefik.ingress.kubernetes.io/redirect-permanent: "true"
+spec:
+  ingressClassName: traefik  
+  rules:
+  - host: touristguide
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80

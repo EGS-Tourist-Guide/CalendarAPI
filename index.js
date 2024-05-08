@@ -1,6 +1,8 @@
 //http://localhost:3000/v1/login
 //http://localhost:3000/
 //http://localhost:3000/api-docs
+//http://touristguide/api-docs
+
 
 //lsof -i :3000
 //kill -9 12345
@@ -429,6 +431,7 @@ app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, r
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`API listening at http://localhost:${port}`);
+var listener = app.listen(port, '0.0.0.0', () => {
+
+  console.log(`API listening at http://localhost:${port}` + listener.address().address); 
 });

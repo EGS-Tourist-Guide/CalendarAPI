@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `storeDB`.`calendars` (
 );
 
 INSERT INTO `storeDB`.`calendars` (`userId`, `name`) VALUES (1, 'Super User Calendar');
+INSERT INTO `storeDB`.`api_keys` (`username`, `password`, `api_key`) VALUES ('luis', 'luis', '7d4d3351-64b9-4d0a-918c-419828a941d3');
 
 CREATE TABLE IF NOT EXISTS `storeDB`.`events` (
   `id` CHAR(36) NOT NULL,

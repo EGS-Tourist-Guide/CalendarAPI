@@ -1,7 +1,7 @@
 # Utilizar a imagem oficial do Node como base
 FROM node:14
 
-RUN apt-get update && apt-get install -y default-mysql-client
+RUN apt-get update 
 
 # Definir o diretório de trabalho no container
 WORKDIR /usr/src/app

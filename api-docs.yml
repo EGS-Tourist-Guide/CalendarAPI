@@ -363,7 +363,7 @@ paths:
             schema:
               type: object
               properties:
-                userName:
+                clientName:
                   type: string
                   description: The name of the client requesting an API key.
                 password:
@@ -384,6 +384,9 @@ paths:
                     type: string
                     description: Success message.
                     example: 'Client registered successfully'
+                  apiKey:
+                    type: string
+                    description: The API key that will be associated with the provided client credentials.
         '409':
           description: Client already exists.
         '400':
@@ -404,7 +407,7 @@ paths:
             schema:
               type: object
               properties:
-                Username:
+                clientName:
                   type: string
                   description: The username of the client.
                 password:
