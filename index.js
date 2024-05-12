@@ -1,4 +1,5 @@
 //http://localhost:3000/v1/login
+//http://touristguide/v1/login
 //http://localhost:3000/
 //http://localhost:3000/api-docs
 //http://touristguide/api-docs
@@ -180,11 +181,14 @@ app.get('/v1/login', (req, res) => {
   //console.log(`Current directory: ${process.cwd()}`);
   // enerates the URL to which the user will be redirected for authentication.
   //route that initiates the OAuth 2.0 authentication process 
+  console.log("Callback route hit1"); // This will help confirm the route is being accessed
   try {
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email'],
     });
+    console.log("OAuth URL:", url);
+    console.log("Callback route hit2"); // This will help confirm the route is being accessed
     res.redirect(url);
   } catch (error) {
     console.error('Error redirecting to OAuth server:', error);
@@ -193,9 +197,11 @@ app.get('/v1/login', (req, res) => {
 });
 
 app.get('/oauth2callback', async (req, res) => {
+  console.log("Callback route hit3"); // This will help confirm the route is being accessed
   // Extrai o código de autorização dos parâmetros da query
   const { tokens } = await oauth2Client.getToken(req.query.code);
   oauth2Client.setCredentials(tokens);
+  console.log("Callback route hit4"); // This will help confirm the route is being accessed
 
   try {
       // Obtém informações do usuário usando os tokens
@@ -315,7 +321,7 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
   try {
     const pool = db.getPool();
-    let query = 'SELECT summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE calendarId = ?';
+    let query = 'SELECT id AS eventId, summary, location, description, DATE_FORMAT(startDateTime, "%Y-%m-%d %H:%i:%s") AS startDateTime, DATE_FORMAT(endDateTime, "%Y-%m-%d %H:%i:%s") AS endDateTime FROM events WHERE calendarId = ?';
     const queryParams = [calendarId];
 
     if (eventId) {
@@ -324,21 +330,21 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     }
 
     if (startDate) {
-      // Parse ISO date and format to MySQL date
-      const formattedStartDate = moment(startDate).format('YYYY-MM-DD');
-      query += ' AND DATE(startDateTime) = ?';
+      // Include time in the comparison
+      const formattedStartDate = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
+      query += ' AND startDateTime >= ?';
       queryParams.push(formattedStartDate);
     }
     if (beforeDate) {
-      // Parse ISO date and format to MySQL date
-      const formattedBeforeDate = moment(beforeDate).format('YYYY-MM-DD');
-      query += ' AND DATE(endDateTime) < ?';
+      // Include time in the comparison
+      const formattedBeforeDate = moment(beforeDate).format('YYYY-MM-DD HH:mm:ss');
+      query += ' AND endDateTime <= ?';
       queryParams.push(formattedBeforeDate);
     }
     if (afterDate) {
-      // Parse ISO date and format to MySQL date
-      const formattedAfterDate = moment(afterDate).format('YYYY-MM-DD');
-      query += ' AND DATE(startDateTime) > ?';
+      // Include time in the comparison
+      const formattedAfterDate = moment(afterDate).format('YYYY-MM-DD HH:mm:ss');
+      query += ' AND startDateTime >= ?';
       queryParams.push(formattedAfterDate);
     }
     if (location) {
@@ -428,7 +434,7 @@ app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, r
 
 
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 
 var listener = app.listen(port, '0.0.0.0', () => {
 

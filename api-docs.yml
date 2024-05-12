@@ -166,7 +166,7 @@ paths:
 
     get:
       tags:
-      - Service Endpoint
+        - Service Endpoint
       summary: Retrieve events from a specific calendar based on criteria
       description: Retrieves events from a specific calendar based on optional search criteria like start date, end date, and location.
       parameters:
@@ -179,27 +179,27 @@ paths:
         - in: query
           name: eventId
           required: false
-          description: Retrieve events that has this eventID. 
+          description: Retrieve events that have this event ID.
           schema:
             type: string
         - in: query
           name: startDate
           required: false
-          description: Retrieve events that start on this date (YYYY-MM-DD) or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
+          description: Retrieve events that start on this date (YYYY-MM-DD) or ISODate 'YYYY-MM-DDTHH:MM:SSZ'.
           schema:
             type: string
             format: date
         - in: query
           name: beforeDate
           required: false
-          description: Retrieve events that end before this date (YYYY-MM-DD)or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
+          description: Retrieve events that end before this date (YYYY-MM-DD) or ISODate 'YYYY-MM-DDTHH:MM:SSZ'.
           schema:
             type: string
             format: date
         - in: query
           name: afterDate
           required: false
-          description: Retrieve events that start after this date (YYYY-MM-DD) or ISODate 'YYYY-mm-ddTHH:MM:ssZ>''
+          description: Retrieve events that start after this date (YYYY-MM-DD) or ISODate 'YYYY-MM-DDTHH:MM:SSZ'.
           schema:
             type: string
             format: date
@@ -219,6 +219,9 @@ paths:
                 items:
                   type: object
                   properties:
+                    eventId:
+                      type: string
+                      description: The unique identifier of the event.
                     summary:
                       type: string
                       description: A brief summary of the event.
@@ -230,21 +233,22 @@ paths:
                       description: A detailed description of the event.
                     startDateTime:
                       type: string
-                      description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format
+                      description: The start date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format.
                     endDateTime:
                       type: string
-                      description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format
+                      description: The end date and time of the event in "YYYY-MM-DD HH:MM:SS" format or ISO 8601 format.
                 example:
-                  - summary: Team Meeting
+                  - eventId: "E123"
+                    summary: Team Meeting
                     location: Office Conference Room
                     description: Discuss project updates and next steps.
                     startDateTime: "2024-03-19T11:00:00Z"
-                    endDateTime: "2024-03-19T11:00:00Z"
+                    endDateTime: "2024-03-19T12:00:00Z"
         '404':
           description: No events found matching the criteria or calendar not found.
         '500':
           description: Internal Server Error. Failed to retrieve events.
-
+    
   /v1/calendars/{calendarId}/{eventId}:
     patch:
       tags:
