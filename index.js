@@ -110,7 +110,10 @@ app.post('/generate-api-key', async (req, res) => {
 
     // Armazenar o nome do cliente (clientName), a senha hash, e a chave de API no banco de dados
     await pool.query('INSERT INTO api_keys (username, password, api_key) VALUES (?, ?, ?)', [clientName, hashedPassword, apiKey]);
-    res.json({ message: 'Client registered successfully', apiKey: apiKey });
+    
+    
+    res.status(201).send({ message: 'Client registered successfully', apiKey: apiKey });
+
   } catch (error) {
     console.error('Registration failed:', error);
     res.status(500).send('Failed to register client');
@@ -143,7 +146,7 @@ app.post('/retrieve-api-key', async (req, res) => {
     }
 
     // Se a senha for correta, retornar a chave de API
-    res.json({ apiKey: client.api_key }); // Retorna a chave de API armazenada
+    res.status(200).send({ apiKey: client.api_key })
   } catch (error) {
     console.error('Failed to retrieve API key:', error);
     res.status(500).send('Failed to retrieve API key');
@@ -176,65 +179,110 @@ const apiKeyMiddleware = async (req, res, next) => {
 
 
 
-// Redirect to Google's OAuth 2.0 server
-app.get('/v1/login', (req, res) => {
-  //console.log(`Current directory: ${process.cwd()}`);
-  // enerates the URL to which the user will be redirected for authentication.
-  //route that initiates the OAuth 2.0 authentication process 
-  console.log("Callback route hit1"); // This will help confirm the route is being accessed
+// // Redirect to Google's OAuth 2.0 server
+// app.get('/v1/login', (req, res) => {
+//   //console.log(`Current directory: ${process.cwd()}`);
+//   // enerates the URL to which the user will be redirected for authentication.
+//   //route that initiates the OAuth 2.0 authentication process 
+//   console.log("Callback route hit1"); // This will help confirm the route is being accessed
+//   try {
+//     const url = oauth2Client.generateAuthUrl({
+//       access_type: 'offline',
+//       scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email'],
+//     });
+//     console.log("OAuth URL:", url);
+//     console.log("Callback route hit2"); // This will help confirm the route is being accessed
+//     res.redirect(url);
+//   } catch (error) {
+//     console.error('Error redirecting to OAuth server:', error);
+//     res.status(500).send('Internal Server Error');
+//   }
+// });
+
+// app.get('/oauth2callback', async (req, res) => {
+//   console.log("Callback route hit3"); // This will help confirm the route is being accessed
+//   // Extrai o código de autorização dos parâmetros da query
+//   const { tokens } = await oauth2Client.getToken(req.query.code);
+//   oauth2Client.setCredentials(tokens);
+//   console.log("Callback route hit4"); // This will help confirm the route is being accessed
+
+//   try {
+//       // Obtém informações do usuário usando os tokens
+//       const userInfo = await fetchUserInfo(tokens.access_token);
+
+//       // Tenta encontrar ou criar um usuário na base de dados
+//       const user = await findOrCreateUser({
+//           googleId: userInfo.id,
+//           email: userInfo.email,
+//           name: userInfo.name,
+//       });
+
+//       const pool = db.getPool();
+
+//       // Verifica se o usuário já possui um calendário
+//       const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [user.id]);
+
+//       let calendarId;
+//       if (existingCalendars.length > 0) {
+//           // Se já existe um calendário, utiliza o ID existente
+//           calendarId = existingCalendars[0].id;
+//       } else {
+//           // Se não existe um calendário, cria um novo
+//           const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [user.id]);
+//           calendarId = insertResult.insertId;
+//       }
+
+//       // Redireciona o usuário para uma página de sucesso com informações relevantes
+//       const deepLinkUrl = `/auth-success.html?userId=${user.id}&calendarId=${calendarId}`;
+//       res.redirect(deepLinkUrl);
+//   } catch (error) {
+//       console.error('Error processing request:', error);
+//       res.status(500).send('Failed to process request');
+//   }
+// });
+
+const { v4: uuidv4 } = require('uuid');
+
+app.post('/v1/login', async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    const url = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email'],
-    });
-    console.log("OAuth URL:", url);
-    console.log("Callback route hit2"); // This will help confirm the route is being accessed
-    res.redirect(url);
-  } catch (error) {
-    console.error('Error redirecting to OAuth server:', error);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-app.get('/oauth2callback', async (req, res) => {
-  console.log("Callback route hit3"); // This will help confirm the route is being accessed
-  // Extrai o código de autorização dos parâmetros da query
-  const { tokens } = await oauth2Client.getToken(req.query.code);
-  oauth2Client.setCredentials(tokens);
-  console.log("Callback route hit4"); // This will help confirm the route is being accessed
-
-  try {
-      // Obtém informações do usuário usando os tokens
-      const userInfo = await fetchUserInfo(tokens.access_token);
-
-      // Tenta encontrar ou criar um usuário na base de dados
-      const user = await findOrCreateUser({
-          googleId: userInfo.id,
-          email: userInfo.email,
-          name: userInfo.name,
-      });
-
-      const pool = db.getPool();
-
-      // Verifica se o usuário já possui um calendário
-      const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [user.id]);
-
-      let calendarId;
-      if (existingCalendars.length > 0) {
-          // Se já existe um calendário, utiliza o ID existente
-          calendarId = existingCalendars[0].id;
-      } else {
-          // Se não existe um calendário, cria um novo
-          const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [user.id]);
-          calendarId = insertResult.insertId;
+    const pool = db.getPool();
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    //palavra pass errada
+    if (users.length > 0) {
+      if (users[0].name !== password) {
+        return res.status(401).send('Invalid username or password');
       }
 
-      // Redireciona o usuário para uma página de sucesso com informações relevantes
-      const deepLinkUrl = `/auth-success.html?userId=${user.id}&calendarId=${calendarId}`;
-      res.redirect(deepLinkUrl);
+      const userId = users[0].id;
+      const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [userId]);
+      let calendarId = existingCalendars.length ? existingCalendars[0].id : null;
+
+      //first time login
+      if (!calendarId) {
+        const [calendarResult] = await pool.query('INSERT INTO calendars (userId, name) VALUES (?, ?)', [userId, 'Default Calendar']);
+        calendarId = calendarResult.insertId;
+      }
+
+      res.send({ userId, calendarId });
+    } 
+    else {
+      const googleId = uuidv4(); // Gerar um UUID único
+      const [userResult] = await pool.query('INSERT INTO users (email, name, google_id) VALUES (?, ?, ?)', [email, password, googleId]);
+      const userId = userResult.insertId;
+      const [calendarResult] = await pool.query('INSERT INTO calendars (userId, name) VALUES (?, ?)', [userId, 'Default Calendar']);
+      const calendarId = calendarResult.insertId;
+
+      res.status(201).json({
+        message: "Login successfully",
+        userId: userId,
+        calendarId: calendarId
+      });
+    }
   } catch (error) {
-      console.error('Error processing request:', error);
-      res.status(500).send('Failed to process request');
+    console.error('Error processing login or registration:', error);
+    res.status(500).send('Internal Server Error');
   }
 });
 
@@ -332,7 +380,7 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     if (startDate) {
       // Include time in the comparison
       const formattedStartDate = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
-      query += ' AND startDateTime >= ?';
+      query += ' AND startDateTime = ?';
       queryParams.push(formattedStartDate);
     }
     if (beforeDate) {
@@ -359,7 +407,9 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
       return res.status(404).send('No events found matching the criteria.');
     }
 
-    res.json(events);
+    res.status(200).json(events);
+
+    //res.json(events);
   } catch (error) {
     console.error('Failed to retrieve events:', error);
     res.status(500).send('Failed to retrieve events');
@@ -397,8 +447,11 @@ app.patch('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, re
       `UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE ${condition}`,
       updateParameters
     );
-    res.json({ message: "Event updated successfully", updatedEventId: eventId });
-  } catch (error) {
+    
+    return res.status(201).send({ message: "Event updated successfully", updatedEventId: eventId });
+
+  } 
+  catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
   }
@@ -421,10 +474,11 @@ app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, r
     if (result.affectedRows === 0) {
       return res.status(404).send('Event not found in the calendar.');
     }
+    
+    return res.status(200).send({ message: "Event deleted successfully", eventId: eventId });
 
-    // Send a success response
-    res.json({ message: "Event deleted successfully", eventId: eventId });
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('Error processing request:', error);
     res.status(500).send('Failed to process request');
   }

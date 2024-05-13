@@ -90,7 +90,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v5
+          image: registry.deti/egs-touristguide/calendar:v10
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -105,7 +105,7 @@ spec:
             - name: GOOGLE_CLIENT_SECRET
               value: "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"
             - name: CALLBACK_URL
-              value: "https://ns10.dnsexit.com/oauth2callback" #trocar para dominio que criei FREEDNS
+              value: "https://www.touristguide.work.gd/oauth2callback" #trocar para dominio que criei FREEDNS
           ports:
             - containerPort: 3000
 

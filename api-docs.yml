@@ -295,7 +295,7 @@ paths:
                   description: The end date and time of the event in ISO 8601 format.
                   example: '2024-03-19T11:00:00Z'
       responses:
-        '200':
+        '201':
           description: Event updated successfully.
           content:
             application/json:
