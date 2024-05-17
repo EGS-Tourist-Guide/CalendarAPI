@@ -151,6 +151,39 @@ spec:
             name: calendar-app-service
             port:
               number: 80
+
+      - path: /login
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80
+
+      - path: /generate-api-key
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80
+
+      - path: /retrieve-api-key 
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80
+
+      - path: /calendars
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80
+              
       - path: /graphql
         pathType: Prefix
         backend:
