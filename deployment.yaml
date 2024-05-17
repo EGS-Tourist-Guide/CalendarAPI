@@ -7,7 +7,7 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pv-claim3
+  name: mysql-pv-claim4
   namespace: egs-touristguide
 spec:
   storageClassName: longhorn
@@ -15,7 +15,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 20Gi
+      storage: 3Gi
 
 ---
 apiVersion: apps/v1
@@ -53,10 +53,11 @@ spec:
       volumes:
         - name: mysql-storage
           persistentVolumeClaim:
-            claimName: mysql-pv-claim3
+            claimName: mysql-pv-claim4
         - name: init-db-script
           configMap:
             name: mysql-init-db
+
 ---
 apiVersion: v1
 kind: Service
@@ -90,7 +91,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v10
+          image: registry.deti/egs-touristguide/calendar:v15
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -105,7 +106,7 @@ spec:
             - name: GOOGLE_CLIENT_SECRET
               value: "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"
             - name: CALLBACK_URL
-              value: "https://www.touristguide.work.gd/oauth2callback" #trocar para dominio que criei FREEDNS
+              value: "https://www.touristguide.work.gd/oauth2callback"
           ports:
             - containerPort: 3000
 
@@ -119,14 +120,12 @@ spec:
   selector:
     app: calendar-app
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3000
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
   type: LoadBalancer
 
-
-
-
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -139,13 +138,67 @@ metadata:
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
   rules:
-  - host: touristguide
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 3000
+    - host: touristguide
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+          - path: /poi
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer

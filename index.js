@@ -485,7 +485,9 @@ app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, r
 });
 
 
-
+app.get('/', (req, res) => {
+  res.send('Welcome to the Calendar App!');
+});
 
 
 const port = process.env.PORT;
