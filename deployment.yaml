@@ -126,6 +126,9 @@ spec:
   type: LoadBalancer
 
 ---
+
+
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -138,67 +141,99 @@ metadata:
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
   rules:
-    - host: touristguide
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nginx-service
-                port:
-                  number: 80
-          - path: /poi
-            pathType: Prefix
-            backend:
-              service:
-                name: nginx-service
-                port:
-                  number: 80
+  - host: srv2-deti.ua.pt
+    http:
+      paths:
+      - path: /api-docs
+        pathType: Prefix
+        backend:
+          service:
+            name: calendar-app-service
+            port:
+              number: 80
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: poi-app-service
+            port:
+              number: 80
 
 
 
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx
-  namespace: egs-touristguide
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:latest
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: nginx-config
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
-      volumes:
-        - name: nginx-config
-          configMap:
-            name: nginx-config
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: touristguide-k3s
+#   namespace: egs-touristguide
+#   annotations:
+#     kubernetes.io/ingress.class: traefik
+#     traefik.ingress.kubernetes.io/frontend-entry-points: http,https
+#     traefik.ingress.kubernetes.io/redirect-entry-point: https
+#     traefik.ingress.kubernetes.io/redirect-permanent: "true"
+# spec:
+#   rules:
+#     - host: srv2-deti.ua.pt
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: nginx-service
+#                 port:
+#                   number: 80
+          # - path: /poi
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: nginx-service
+          #       port:
+          #         number: 80
 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-service
-  namespace: egs-touristguide
-spec:
-  selector:
-    app: nginx
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
-  type: LoadBalancer
+
+
+# ---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: nginx
+#   namespace: egs-touristguide
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: nginx
+#   template:
+#     metadata:
+#       labels:
+#         app: nginx
+#     spec:
+#       containers:
+#         - name: nginx
+#           image: nginx:latest
+#           ports:
+#             - containerPort: 80
+#           volumeMounts:
+#             - name: nginx-config
+#               mountPath: /etc/nginx/nginx.conf
+#               subPath: nginx.conf
+#       volumes:
+#         - name: nginx-config
+#           configMap:
+#             name: nginx-config
+
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: nginx-service
+#   namespace: egs-touristguide
+# spec:
+#   selector:
+#     app: nginx
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 80
+#   type: LoadBalancer

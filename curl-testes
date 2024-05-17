@@ -1,4 +1,4 @@
---kubernettes tutorial:
+--- kubernettes tutorial:
 kubectl create namespace egs-touristguide (ja existe)
 
 docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v15 .
@@ -36,6 +36,8 @@ kubectl get svc calendar-app-service -n egs-touristguide -o yaml
 kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o jsonpath='{.items[0].metadata.name}') -n egs-touristguide -- curl -X POST localhost:3000/generate-api-key -H "Content-Type: application/json" -d '{"clientName": "Marta", "password": "123"}'
 
 
+kubectl scale deployment nginx --replicas=0 -n egs-touristguide
+kubectl scale deployment nginx --replicas=1 -n egs-touristguide
 
 --dc3ae20cfa7a542955ccac1d7ceb7f3cf337731150041a0dcc5c9c0e5243
 --api key luis
@@ -43,16 +45,17 @@ kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o js
 
 --docs
 
-https://touristguide/api-docs
+https://srv2-deti.ua.pt/api-docs
 
-https://touristguide/
+https://touristguide/api-docs
 http://touristguide/v1/login/
 
 
-curl -X POST http://touristguide/poi/graphql \
+curl -X POST http://srv2-deti.ua.pt/graphql \
 -H "Content-Type: application/json" \
--d '{"query":"query findPOIs { searchPointsOfInterest( apiKey: \"Tigas:4712b0a1d771938c04e5cba078b0a889\", searchInput: { locationName: \"Portugal\" } ) { _id name location { coordinates } locationName street postcode description category thumbnail event_ids } }"}'
-
+-d '{
+    "query": "query findPOIs { searchPointsOfInterest( apiKey: \"Tigas:4712b0a1d771938c04e5cba078b0a889\", searchInput: { locationName: \"Portugal\" } ) { _id name location { coordinates } locationName street postcode description category thumbnail event_ids } }"
+}'
 
 
 
