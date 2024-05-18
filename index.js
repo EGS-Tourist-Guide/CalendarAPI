@@ -243,7 +243,7 @@ const apiKeyMiddleware = async (req, res, next) => {
 
 const { v4: uuidv4 } = require('uuid');
 
-app.post('/v1/login', async (req, res) => {
+app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -329,7 +329,7 @@ app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 // Insere um novo evento no calendário do usuário
-app.post('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+app.post('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   const { eventId, summary, location, description, start, end, timeZone, obs } = req.body;
 
@@ -363,7 +363,7 @@ function normalizeString(input) {
   return input.toLowerCase().replace(/[\s,]+/g, ''); // Remove espaços e vírgulas e converte para minúsculas
 }
 
-app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+app.get('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   let { startDate, beforeDate, afterDate, location, eventId } = req.query;
 
@@ -421,7 +421,7 @@ app.get('/v1/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
 
 
 // Updates an existing event in the user's calendar
-app.patch('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
+app.patch('/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
   const { calendarId, eventId } = req.params;  // Extract both calendarId and eventId from URL
   const { summary, location, description, start, end, timeZone } = req.body;
 
@@ -459,7 +459,7 @@ app.patch('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, re
 
 
 // Deletes an existing event from the user's calendar
-app.delete('/v1/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
+app.delete('/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) => {
   const { calendarId, eventId } = req.params; // Extracting eventId and calendarId from the URL
 
   try {

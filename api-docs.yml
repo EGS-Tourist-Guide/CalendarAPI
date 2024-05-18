@@ -4,10 +4,11 @@ info:
   version: "1.0"
 servers:
   - url: http://localhost:3000/
+  - url: http://srv2-deti.ua.pt/
 security:
   - ApiKeyAuth: []
 paths:
-  /v1/login:
+  /login:
     get:
       tags:
         - Service Endpoint

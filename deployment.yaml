@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v15
+          image: registry.deti/egs-touristguide/calendar:v18
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -126,147 +126,173 @@ spec:
   type: LoadBalancer
 
 ---
-
-
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: touristguide-k3s
   namespace: egs-touristguide
   annotations:
-    kubernetes.io/ingress.class: traefik
     traefik.ingress.kubernetes.io/frontend-entry-points: http,https
     traefik.ingress.kubernetes.io/redirect-entry-point: https
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
+  ingressClassName: traefik
   rules:
-  - host: srv2-deti.ua.pt
-    http:
-      paths:
-      - path: /api-docs
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 80
+    - host: srv2-deti.ua.pt
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
 
-      - path: /login
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: egs-touristguide
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes auto;
+    error_log /var/log/nginx/error.log notice;
+    pid /var/run/nginx.pid;
 
-      - path: /generate-api-key
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 80
+    events {
+        worker_connections 1024;
+    }
 
-      - path: /retrieve-api-key 
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 80
+    http {
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for"';
 
-      - path: /calendars
-        pathType: Prefix
-        backend:
-          service:
-            name: calendar-app-service
-            port:
-              number: 80
-              
-      - path: /graphql
-        pathType: Prefix
-        backend:
-          service:
-            name: poi-app-service
-            port:
-              number: 80
+        access_log /var/log/nginx/access.log main;
 
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
 
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
 
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: touristguide-k3s
-#   namespace: egs-touristguide
-#   annotations:
-#     kubernetes.io/ingress.class: traefik
-#     traefik.ingress.kubernetes.io/frontend-entry-points: http,https
-#     traefik.ingress.kubernetes.io/redirect-entry-point: https
-#     traefik.ingress.kubernetes.io/redirect-permanent: "true"
-# spec:
-#   rules:
-#     - host: srv2-deti.ua.pt
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: nginx-service
-#                 port:
-#                   number: 80
-          # - path: /poi
-          #   pathType: Prefix
-          #   backend:
-          #     service:
-          #       name: nginx-service
-          #       port:
-          #         number: 80
+        upstream calendar_app {
+            server calendar-app-service:80;
+        }
 
+        upstream poi_app {
+            server poi-app-service:80;
+        }
 
+        server {
+            listen 80;
+            server_name srv2-deti.ua.pt;
 
-# ---
-# apiVersion: apps/v1
-# kind: Deployment
-# metadata:
-#   name: nginx
-#   namespace: egs-touristguide
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: nginx
-#   template:
-#     metadata:
-#       labels:
-#         app: nginx
-#     spec:
-#       containers:
-#         - name: nginx
-#           image: nginx:latest
-#           ports:
-#             - containerPort: 80
-#           volumeMounts:
-#             - name: nginx-config
-#               mountPath: /etc/nginx/nginx.conf
-#               subPath: nginx.conf
-#       volumes:
-#         - name: nginx-config
-#           configMap:
-#             name: nginx-config
+            location / {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
 
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: nginx-service
-#   namespace: egs-touristguide
-# spec:
-#   selector:
-#     app: nginx
-#   ports:
-#     - protocol: TCP
-#       port: 80
-#       targetPort: 80
-#   type: LoadBalancer
+            location /api-docs {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+            
+            location /login {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /generate-api-key {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /retrieve-api-key {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /calendars {
+                proxy_pass http://calendar_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /graphql {
+                proxy_pass http://poi_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+        }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
