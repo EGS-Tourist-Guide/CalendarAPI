@@ -3,6 +3,295 @@ kind: Namespace
 metadata:
   name: egs-touristguide
 
+
+####################################### AMAZONS3 #######################################
+# AmazonS3 deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amazons3-service
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: amazons3-service
+  template:
+    metadata:
+      labels:
+        app: amazons3-service
+    spec:
+      containers:
+      - name: amazons3-service
+        image: registry.deti/egs-touristguide/amazons3:v5
+        ports:
+        - containerPort: 5000
+
+# AmazonS3 service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amazons3-app-service
+  namespace: egs-touristguide
+spec:
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: amazons3-service
+  type: LoadBalancer
+
+
+####################################### MONGO #######################################
+# Persistent volume claim for mongo
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:  mongo-event
+  namespace: egs-touristguide
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+# Mongo deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-event
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-event
+  template:
+    metadata:
+      labels:
+        app: mongo-event
+    spec:
+      containers:
+        - name: mongo-event
+          image: mongo
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-event
+              mountPath: /var/lib/mongodb
+            - name: init-db-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mongo-event
+          persistentVolumeClaim:
+            claimName: mongo-event
+        - name: init-db-script
+          configMap:
+            name: mongo-event-init
+
+# Mongo service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-mongo-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: mongo-event
+  ports:
+    - protocol: TCP
+      port: 27018
+      targetPort: 27017
+  clusterIP: None
+
+####################################### EVENTS #######################################
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: event-service-config
+  namespace: egs-touristguide
+data:
+  API_NAME: 'Event_Service'
+  API_PORT: '1000'
+  API_SECRET: 'Aq@Z%&6h9vRU/9Z5Oy!3z6`X0^M.kv'
+  DATABASE_NAME: 'Event_Service'
+  DATABASE_URI: 'mongodb://event-mongo-service:27018/Event_Service'
+  AMAZONS3_SERVICE_ACCESS_KEY_ID: 'ft}+[2b~yRqVvL%9J$B%)^c!f8MF~Y'
+  AMAZONS3_SERVICE_SECRET_ACCESS_KEY: 'f+jQ9_lY(5=AR|UBPCU&E?$Xz|zeC*'
+  AMAZONS3_SERVICE_REGION: 'eu-west-1'
+  AMAZONS3_SERVICE_BUCKET: 'Event_Service'
+  AMAZONS3_SERVICE_URL: 'amazons3-app-service:80'
+  CALENDAR_SERVICE_KEY: '7d4d3351-64b9-4d0a-918c-419828a941d3'
+  CALENDAR_SERVICE_URL: 'calendar-app-service'
+  CALENDAR_SERVICE_PORT: '80'
+  POI_SERVICE_KEY: 'Tigas:4712b0a1d771938c04e5cba078b0a889'
+  POI_SERVICE_URL: 'poi-app-service'
+  POI_SERVICE_PORT: '80'
+
+# Event deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-service
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-service
+  template:
+    metadata:
+      labels:
+        app: event-service
+    spec:
+      containers:
+      - name: event-service
+        image: registry.deti/egs-touristguide/event:v13
+        ports:
+        - containerPort: 1000
+        envFrom:
+          - configMapRef:
+              name: event-service-config
+
+# Event service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-app-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: event-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 1000
+  type: LoadBalancer
+
+
+
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-data
+  namespace: egs-touristguide
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /var/lib/mongodb
+            - name: init-db-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: mongodb-data
+        - name: init-db-script
+          configMap:
+            name: mongo-db-init
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: poi-mongodb-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+  clusterIP: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: poi-app
+  namespace: egs-touristguide
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poi-app
+  template:
+    metadata:
+      labels:
+        app: poi-app
+    spec:
+      containers:
+        - name: poi-app
+          image: registry.deti/egs-touristguide/poi:v3
+          env:
+            - name: MONGODB_URI
+              value: "mongodb://poi-mongodb-service:27017/poi-database"
+            - name: DB_NAME
+              value: "poi_database"
+            - name: COLLECTION_NAME
+              value: "POIs"
+            - name: COLLECTION_APIKEYS
+              value: "apiKeys"
+          ports:
+            - containerPort: 4000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: poi-app-service
+  namespace: egs-touristguide
+spec:
+  selector:
+    app: poi-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 4000
+  type: LoadBalancer
+
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -91,7 +380,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v18
+          image: registry.deti/egs-touristguide/calendar:v20
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -149,6 +438,7 @@ spec:
                 port:
                   number: 80
 
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -189,18 +479,13 @@ data:
         upstream poi_app {
             server poi-app-service:80;
         }
+        upstream event_app {
+            server event-app-service:80;
+        }
 
         server {
             listen 80;
             server_name srv2-deti.ua.pt;
-
-            location / {
-                proxy_pass http://calendar_app;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-            }
 
             location /api-docs {
                 proxy_pass http://calendar_app;
@@ -209,7 +494,16 @@ data:
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-            
+
+            location e1/ {
+                proxy_pass http://event_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+
             location /login {
                 proxy_pass http://calendar_app;
                 proxy_set_header Host $host;

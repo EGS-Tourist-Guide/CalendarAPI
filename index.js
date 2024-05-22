@@ -289,7 +289,7 @@ app.post('/login', async (req, res) => {
 
 
 //Create a new calendar for the user
-app.post('/v1/:userId/', apiKeyMiddleware, async (req, res) => {
+app.post('/calendars/:userId/', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
 
   try {

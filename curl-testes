@@ -1,8 +1,8 @@
 --- kubernettes tutorial:
 kubectl create namespace egs-touristguide (ja existe)
 
-docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v18 .
-docker push registry.deti/egs-touristguide/calendar:v18
+docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v20 .
+docker push registry.deti/egs-touristguide/calendar:v20
 kubectl apply -f deployment.yaml -n egs-touristguide
 kubectl create configmap mysql-init-db --from-file=init-db.sql=./database/init-db.sql -n egs-touristguide
 kubectl create configmap nginx-config --from-file=nginx-config=./nginx.conf -n egs-touristguide
@@ -39,16 +39,15 @@ kubectl exec -it $(kubectl get pod -l app=calendar-app -n egs-touristguide -o js
 kubectl scale deployment nginx --replicas=0 -n egs-touristguide
 kubectl scale deployment nginx --replicas=1 -n egs-touristguide
 
---dc3ae20cfa7a542955ccac1d7ceb7f3cf337731150041a0dcc5c9c0e5243
---api key luis
 
 
---docs
+curl -X 'GET' 'http://srv2-deti.ua.pt/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: b992dee0-5b1a-4ab3-b57d-23e53600bcd2' 
 
 https://srv2-deti.ua.pt/api-docs
 
-https://touristguide/api-docs
+------------
 
+https://srv2-deti.ua.pt/e1/docs
 
 curl -X POST http://srv2-deti.ua.pt/graphql \
 -H "Content-Type: application/json" \
@@ -63,11 +62,28 @@ curl -X POST http://srv2-deti.ua.pt/generate-api-key \
 -H "Content-Type: application/json" \
 -d '{"clientName":"Marta", "password":"123"}'
 
+
 --buscar API Key
 curl -X POST http://srv2-deti.ua.pt/retrieve-api-key \
      -H "Content-Type: application/json" \
      -d '{"clientName":"Marta", "password":"123"}'
 
+
+
+curl -X POST http://localhost:3000/retrieve-api-key \
+     -H "Content-Type: application/json" \
+     -d '{"clientName":"Marta", "password":"123"}'
+
+
+
+curl -X POST http://localhost:3000/calendars/1 \
+-H "Content-Type: application/json" \
+-H "x-api-key: e5e64f9d0bb7664e2446bbaa38ff215d49bd7144eef4a9ff2653ea298134" \
+
+
+curl -X POST http://srv2-deti.ua.pt/calendars/1 \
+-H "Content-Type: application/json" \
+-H "x-api-key: 7d4d3351-64b9-4d0a-918c-419828a941d3" \
 
 
 curl -X POST http://srv2-deti.ua.pt/login \
@@ -77,7 +93,7 @@ curl -X POST http://srv2-deti.ua.pt/login \
 
 
 
-curl -X DELETE http://srv2-deti.ua.pt/v1/calendars/2/2222-4505-5e3c-b57f-dc92627d011e \
+curl -X DELETE http://srv2-deti.ua.pt/calendars/2/2222-4505-5e3c-b57f-dc92627d011e \
      -H "x-api-key: 413fc14824607f17fbd8c46385f784df8973db406e5e41e2102df9082a07"
 
 
@@ -172,7 +188,7 @@ curl -X POST http://srv2-deti.ua.pt/calendars/1 \
 curl -X GET "http://srv2-deti.ua.pt/calendars/1" -H "Content-Type: application/json" -H "x-api-key: 7d4d3351-64b9-4d0a-918c-419828a941d3"
 
 --pesquisa com location
-curl -X GET "http://srv2-deti.ua.pt/calendars/2?location=avenida" -H "Content-Type: application/json" -H "x-api-key: 7d4d3351-64b9-4d0a-918c-419828a941d3"
+curl -X GET "http://srv2-deti.ua.pt/calendars/1?location=Lisboa" -H "Content-Type: application/json" -H "x-api-key: 7d4d3351-64b9-4d0a-918c-419828a941d3"
 
 --pesquisa com startDate
 curl -X GET "http://srv2-deti.ua.pt/calendars/1?startDate=2024-06-05T14:30:00" -H "Content-Type: application/json" -H "x-api-key: 7d4d3351-64b9-4d0a-918c-419828a941d3"
