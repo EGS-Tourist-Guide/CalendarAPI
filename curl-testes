@@ -41,7 +41,11 @@ kubectl scale deployment nginx --replicas=1 -n egs-touristguide
 
 
 
-curl -X 'GET' 'http://srv2-deti.ua.pt/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: b992dee0-5b1a-4ab3-b57d-23e53600bcd2' 
+curl -X 'GET' 'http://srv2-deti.ua.pt/e1/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: 687533bec180f8a988c925a11fc88373173fe0328be2737a578475754da26da1' 
+
+
+curl -X 'GET' 'http://srv2-deti.ua.pt/e1/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: 93489d58-e2cf-4e11-b3ac-74381fee38ac' 
+
 
 https://srv2-deti.ua.pt/api-docs
 

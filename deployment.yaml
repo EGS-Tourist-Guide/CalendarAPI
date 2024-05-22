@@ -37,7 +37,7 @@ metadata:
   namespace: egs-touristguide
 spec:
   ports:
-  - port: 80
+  - port: 81
     targetPort: 5000
   selector:
     app: amazons3-service
@@ -109,7 +109,6 @@ spec:
     - protocol: TCP
       port: 27018
       targetPort: 27017
-  clusterIP: None
 
 ####################################### EVENTS #######################################
 ---
@@ -174,7 +173,7 @@ spec:
     app: event-service
   ports:
     - protocol: TCP
-      port: 80
+      port: 82
       targetPort: 1000
   type: LoadBalancer
 
@@ -287,7 +286,7 @@ spec:
     app: poi-app
   ports:
     - protocol: TCP
-      port: 80
+      port: 83
       targetPort: 4000
   type: LoadBalancer
 
@@ -410,7 +409,7 @@ spec:
     app: calendar-app
   ports:
     - protocol: TCP
-      port: 80
+      port: 84
       targetPort: 3000
   type: LoadBalancer
 
@@ -425,18 +424,17 @@ metadata:
     traefik.ingress.kubernetes.io/redirect-entry-point: https
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
-  ingressClassName: traefik
   rules:
-    - host: srv2-deti.ua.pt
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nginx-service
-                port:
-                  number: 80
+  - host: srv2-deti.ua.pt
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: nginx-service
+              port:
+                number: 80
 
 
 ---
@@ -473,18 +471,18 @@ data:
         default_type application/octet-stream;
 
         upstream calendar_app {
-            server calendar-app-service:80;
+            server calendar-app-service:84;
         }
 
         upstream poi_app {
-            server poi-app-service:80;
+            server poi-app-service:83;
         }
         upstream event_app {
-            server event-app-service:80;
+            server event-app-service:82;
         }
 
         server {
-            listen 80;
+            listen 80 default_server;
             server_name srv2-deti.ua.pt;
 
             location /api-docs {
@@ -495,7 +493,7 @@ data:
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
 
-            location e1/ {
+            location /e1 {
                 proxy_pass http://event_app;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
@@ -589,4 +587,3 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-  type: LoadBalancer
