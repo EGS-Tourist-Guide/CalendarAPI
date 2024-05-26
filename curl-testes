@@ -1,8 +1,8 @@
 --- kubernettes tutorial:
 kubectl create namespace egs-touristguide (ja existe)
 
-docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v20 .
-docker push registry.deti/egs-touristguide/calendar:v20
+docker buildx build --platform linux/amd64 --network=host -t registry.deti/egs-touristguide/calendar:v23 .
+docker push registry.deti/egs-touristguide/calendar:v23
 kubectl apply -f deployment.yaml -n egs-touristguide
 kubectl create configmap mysql-init-db --from-file=init-db.sql=./database/init-db.sql -n egs-touristguide
 kubectl create configmap nginx-config --from-file=nginx-config=./nginx.conf -n egs-touristguide
@@ -11,6 +11,7 @@ kubectl create configmap nginx-config --from-file=nginx-config=./nginx.conf -n e
 
 kubectl rollout restart deployment/mysql -n egs-touristguide
 kubectl rollout restart deployment/nginx -n egs-touristguide
+kubectl rollout restart deployment calendar-app -n egs-touristguide
 
 
 kubectl delete -f deployment.yaml -n egs-touristguide
@@ -44,16 +45,16 @@ kubectl scale deployment nginx --replicas=1 -n egs-touristguide
 curl -X 'GET' 'http://srv2-deti.ua.pt/e1/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: 687533bec180f8a988c925a11fc88373173fe0328be2737a578475754da26da1' 
 
 
-curl -X 'GET' 'http://srv2-deti.ua.pt/e1/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: 93489d58-e2cf-4e11-b3ac-74381fee38ac' 
+curl -X 'GET' 'http://grupo4-egs-deti.ua.pt/e1/events?limit=25&offset=0' -H 'accept: application/json' -H 'SERVICE-API-KEY: 93489d58-e2cf-4e11-b3ac-74381fee38ac' 
 
 
-https://srv2-deti.ua.pt/api-docs
+https://grupo4-egs-deti.ua.pt/api-docs
 
 ------------
 
-https://srv2-deti.ua.pt/e1/docs
+https://grupo4-egs-deti.ua.pt/e1/docs
 
-curl -X POST http://srv2-deti.ua.pt/graphql \
+curl -X POST http://grupo4-egs-deti.ua.pt/graphql \
 -H "Content-Type: application/json" \
 -d '{
     "query": "query findPOIs { searchPointsOfInterest( apiKey: \"Tigas:4712b0a1d771938c04e5cba078b0a889\", searchInput: { locationName: \"Portugal\" } ) { _id name location { coordinates } locationName street postcode description category thumbnail event_ids } }"
@@ -62,7 +63,7 @@ curl -X POST http://srv2-deti.ua.pt/graphql \
 
 
 --gerar api keys
-curl -X POST http://srv2-deti.ua.pt/generate-api-key \
+curl -X POST http://grupo4-egs-deti.ua.pt/generate-api-key \
 -H "Content-Type: application/json" \
 -d '{"clientName":"Marta", "password":"123"}'
 

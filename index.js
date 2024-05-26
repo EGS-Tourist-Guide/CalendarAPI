@@ -1,16 +1,3 @@
-//http://localhost:3000/v1/login
-//http://touristguide/v1/login
-//http://localhost:3000/
-//http://localhost:3000/api-docs
-//http://touristguide/api-docs
-
-
-
-//exemplos teste endpoint create calendar
-//curl -X POST http://localhost:3000/v1/1/
-//  > -H "Content-Type: application/json" \
-//  > -d '{"name":"My Personal Calendar","description":"This calendar is for tracking my personal events."}'
-
 require('dotenv').config();
 const crypto = require('crypto');
 const express = require('express');
@@ -37,7 +24,8 @@ const app = express();
 app.use(express.static(__dirname + '/public'));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.use(cors(corsOptions));
+//app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 // // At application start

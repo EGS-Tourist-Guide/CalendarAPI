@@ -3,10 +3,8 @@ kind: Namespace
 metadata:
   name: egs-touristguide
 
-
 ####################################### AMAZONS3 #######################################
-# AmazonS3 deployment
----
+--- # Amazons3 deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,8 +26,7 @@ spec:
         ports:
         - containerPort: 5000
 
-# AmazonS3 service
----
+--- # Amazons3 service
 apiVersion: v1
 kind: Service
 metadata:
@@ -44,9 +41,8 @@ spec:
   type: LoadBalancer
 
 
-####################################### MONGO #######################################
-# Persistent volume claim for mongo
----
+####################################### MONGO - EVENT #######################################
+--- # Mongo-event persistent volume claim
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -60,8 +56,7 @@ spec:
     requests:
       storage: 5Gi
 
-# Mongo deployment
----
+--- # Mongo-event deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -95,8 +90,7 @@ spec:
           configMap:
             name: mongo-event-init
 
-# Mongo service
----
+--- # Mongo-event service
 apiVersion: v1
 kind: Service
 metadata:
@@ -110,8 +104,8 @@ spec:
       port: 27018
       targetPort: 27017
 
-####################################### EVENTS #######################################
----
+####################################### EVENT #######################################
+--- # Event configMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -127,16 +121,15 @@ data:
   AMAZONS3_SERVICE_SECRET_ACCESS_KEY: 'f+jQ9_lY(5=AR|UBPCU&E?$Xz|zeC*'
   AMAZONS3_SERVICE_REGION: 'eu-west-1'
   AMAZONS3_SERVICE_BUCKET: 'Event_Service'
-  AMAZONS3_SERVICE_URL: 'amazons3-app-service:80'
+  AMAZONS3_SERVICE_URL: 'http://amazons3-app-service:81'
   CALENDAR_SERVICE_KEY: '7d4d3351-64b9-4d0a-918c-419828a941d3'
-  CALENDAR_SERVICE_URL: 'calendar-app-service'
-  CALENDAR_SERVICE_PORT: '80'
+  CALENDAR_SERVICE_URL: 'http://calendar-app-service'
+  CALENDAR_SERVICE_PORT: '84'
   POI_SERVICE_KEY: 'Tigas:4712b0a1d771938c04e5cba078b0a889'
-  POI_SERVICE_URL: 'poi-app-service'
-  POI_SERVICE_PORT: '80'
+  POI_SERVICE_URL: 'http://poi-app-service'
+  POI_SERVICE_PORT: '83'
 
-# Event deployment
----
+--- # Event deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -161,8 +154,7 @@ spec:
           - configMapRef:
               name: event-service-config
 
-# Event service
----
+--- # Event service
 apiVersion: v1
 kind: Service
 metadata:
@@ -176,10 +168,6 @@ spec:
       port: 82
       targetPort: 1000
   type: LoadBalancer
-
-
-
-
 
 ---
 apiVersion: v1
@@ -379,7 +367,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v20
+          image: registry.deti/egs-touristguide/calendar:v23
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -425,7 +413,7 @@ metadata:
     traefik.ingress.kubernetes.io/redirect-permanent: "true"
 spec:
   rules:
-  - host: srv2-deti.ua.pt
+  - host: grupo4-egs-deti.ua.pt
     http:
       paths:
         - path: /
@@ -473,12 +461,14 @@ data:
         upstream calendar_app {
             server calendar-app-service:84;
         }
-
         upstream poi_app {
             server poi-app-service:83;
         }
         upstream event_app {
             server event-app-service:82;
+        }
+        upstream amazons3_app {
+            server amazons3-app-service:81;
         }
 
         server {
@@ -493,6 +483,14 @@ data:
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
 
+            location /s1 {
+                proxy_pass http://amazons3_app;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
             location /e1 {
                 proxy_pass http://event_app;
                 proxy_set_header Host $host;
@@ -500,8 +498,7 @@ data:
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
             }
-
-
+  
             location /login {
                 proxy_pass http://calendar_app;
                 proxy_set_header Host $host;

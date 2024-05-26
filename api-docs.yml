@@ -3,79 +3,54 @@ info:
   title: Calendar API
   version: "1.0"
 servers:
-  - url: http://localhost:3000/
-  - url: http://srv2-deti.ua.pt/
+  - url: https://grupo4-egs-deti.ua.pt/
 security:
   - ApiKeyAuth: []
 paths:
   /login:
-    get:
-      tags:
-        - Service Endpoint
-      summary: Redirect to Google's OAuth 2.0 server
-      description: Initiates the OAuth 2.0 authentication flow by redirecting the user to Google's OAuth 2.0 server.
-      responses:
-        '302':
-          description: Redirects to Google OAuth server.
-        '400':
-          description: Bad request, check if parameters are correct.
-        '500':
-          description: Internal server error.
-
-  /oauth2callback:
-    get:
-      tags:
-        - Service Endpoint
-      summary: OAuth 2.0 Callback Endpoint
-      description: >
-        Handles the callback from Google's OAuth 2.0 server. This endpoint exchanges
-        the authorization code for access and refresh tokens with Google. After obtaining
-        and storing the user's information, it redirects to an intermediate page which
-        then can handle further user-specific redirection or actions.
-      responses:
-        '302':
-          description: Found. Redirect to an intermediate success page.
-          headers:
-            Location:
-              description: Redirect location to the success page with the user ID as a query parameter.
-              schema:
-                type: string
-                example: '/auth-success.html?userId=12345'
-        '400':
-          description: Bad request, failed to exchange authorization code.
-        '500':
-          description: Internal server error, failed to process the request.
-
-  /{userId}/:
     post:
       tags:
         - Service Endpoint
-      summary: Create a new calendar for the user and returns the calendar ID associated to the user.
-      description: Creates a new calendar associated with the specified user within the application.
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          description: The ID of the user for whom the calendar is being created.
-          schema:
-            type: integer
+      summary: Logs in a user or creates a new user
+      description: Logs in a user if the credentials are correct or creates a new user if they do not exist. Returns the userID and calendarID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  description: The email of the user.
+                password:
+                  type: string
+                  description: The password of the user.
+              required:
+                - email
+                - password
+              example:
+                email: "user@example.com"
+                password: "securepassword"
       responses:
         '200':
-          description: User already has a calendar; existing calendar ID returned.
+          description: Login successful, user exists.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                    description: Informational message.
-                    example: 'User already has a calendar.'
+                  userId:
+                    type: integer
+                    description: The ID of the user.
                   calendarId:
                     type: integer
-                    description: The ID of the existing calendar.
+                    description: The ID of the user's calendar.
+                example:
+                  userId: 1
+                  calendarId: 1
         '201':
-          description: Calendar successfully created.
+          description: User created successfully.
           content:
             application/json:
               schema:
@@ -84,16 +59,21 @@ paths:
                   message:
                     type: string
                     description: Success message.
-                    example: 'Calendar created successfully.'
+                  userId:
+                    type: integer
+                    description: The ID of the new user.
                   calendarId:
                     type: integer
-                    description: The calendar ID assigned to the user.
-        '400':
-          description: Bad Request. User already has a calendar.
-        '404':
-          description: User not found for the given user ID.
+                    description: The ID of the new user's calendar.
+                example:
+                  message: "Login successfully"
+                  userId: 2
+                  calendarId: 2
+        '401':
+          description: Invalid username or password.
         '500':
-          description: Internal Server Error. Failed to create calendar.
+          description: Internal server error.
+
 
   /calendars/{calendarId}/:
     post:
