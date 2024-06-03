@@ -147,7 +147,7 @@ spec:
     spec:
       containers:
       - name: event-service
-        image: registry.deti/egs-touristguide/event:v13
+        image: registry.deti/egs-touristguide/event:v16
         ports:
         - containerPort: 1000
         envFrom:
@@ -367,7 +367,7 @@ spec:
     spec:
       containers:
         - name: calendar-app
-          image: registry.deti/egs-touristguide/calendar:v23
+          image: registry.deti/egs-touristguide/calendar:v25
           env:
             - name: DB_HOST
               value: "mysql-service"
@@ -473,7 +473,7 @@ data:
 
         server {
             listen 80 default_server;
-            server_name srv2-deti.ua.pt;
+            server_name grupo4-egs-deti.ua.pt;
 
             location /api-docs {
                 proxy_pass http://calendar_app;
@@ -584,3 +584,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
+      

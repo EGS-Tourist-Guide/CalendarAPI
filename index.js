@@ -66,10 +66,10 @@ async function fetchUserInfo(accessToken) {
 
   try {
       const userInfoResponse = await oauth2.userinfo.get();
-      return userInfoResponse.data; // This contains the user's profile information
+      return userInfoResponse.data; 
   } catch (error) {
       console.error('Error fetching user information:', error);
-      throw error; // Rethrow or handle as desired
+      throw error; 
   }
 }
 
@@ -83,20 +83,16 @@ app.post('/generate-api-key', async (req, res) => {
 
   try {
     const pool = db.getPool();
-    // Verificar se já existe um cliente com esse nome
     const [existingClient] = await pool.query('SELECT * FROM api_keys WHERE username = ?', [clientName]);
     if (existingClient.length > 0) {
       return res.status(409).send('Client already exists.');
     }
 
-    // Gerar hash da senha
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Gerar a chave de API
     const apiKey = crypto.randomBytes(30).toString('hex');
 
-    // Armazenar o nome do cliente (clientName), a senha hash, e a chave de API no banco de dados
     await pool.query('INSERT INTO api_keys (username, password, api_key) VALUES (?, ?, ?)', [clientName, hashedPassword, apiKey]);
     
     
@@ -125,10 +121,9 @@ app.post('/retrieve-api-key', async (req, res) => {
       return res.status(404).send('Client not found');
     }
 
-    const client = clients[0]; // Assumindo que usernames são únicos, pegamos o primeiro resultado
+    const client = clients[0]; 
 
-    // Verificar se a senha é correta
-    const isValid = await bcrypt.compare(password, client.password); // Ajustado para usar a coluna correta
+    const isValid = await bcrypt.compare(password, client.password); 
     if (!isValid) {
       return res.status(401).send('Invalid credentials');
     }
@@ -166,68 +161,6 @@ const apiKeyMiddleware = async (req, res, next) => {
 };
 
 
-
-// // Redirect to Google's OAuth 2.0 server
-// app.get('/v1/login', (req, res) => {
-//   //console.log(`Current directory: ${process.cwd()}`);
-//   // enerates the URL to which the user will be redirected for authentication.
-//   //route that initiates the OAuth 2.0 authentication process 
-//   console.log("Callback route hit1"); // This will help confirm the route is being accessed
-//   try {
-//     const url = oauth2Client.generateAuthUrl({
-//       access_type: 'offline',
-//       scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email'],
-//     });
-//     console.log("OAuth URL:", url);
-//     console.log("Callback route hit2"); // This will help confirm the route is being accessed
-//     res.redirect(url);
-//   } catch (error) {
-//     console.error('Error redirecting to OAuth server:', error);
-//     res.status(500).send('Internal Server Error');
-//   }
-// });
-
-// app.get('/oauth2callback', async (req, res) => {
-//   console.log("Callback route hit3"); // This will help confirm the route is being accessed
-//   // Extrai o código de autorização dos parâmetros da query
-//   const { tokens } = await oauth2Client.getToken(req.query.code);
-//   oauth2Client.setCredentials(tokens);
-//   console.log("Callback route hit4"); // This will help confirm the route is being accessed
-
-//   try {
-//       // Obtém informações do usuário usando os tokens
-//       const userInfo = await fetchUserInfo(tokens.access_token);
-
-//       // Tenta encontrar ou criar um usuário na base de dados
-//       const user = await findOrCreateUser({
-//           googleId: userInfo.id,
-//           email: userInfo.email,
-//           name: userInfo.name,
-//       });
-
-//       const pool = db.getPool();
-
-//       // Verifica se o usuário já possui um calendário
-//       const [existingCalendars] = await pool.query('SELECT * FROM calendars WHERE userId = ?', [user.id]);
-
-//       let calendarId;
-//       if (existingCalendars.length > 0) {
-//           // Se já existe um calendário, utiliza o ID existente
-//           calendarId = existingCalendars[0].id;
-//       } else {
-//           // Se não existe um calendário, cria um novo
-//           const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [user.id]);
-//           calendarId = insertResult.insertId;
-//       }
-
-//       // Redireciona o usuário para uma página de sucesso com informações relevantes
-//       const deepLinkUrl = `/auth-success.html?userId=${user.id}&calendarId=${calendarId}`;
-//       res.redirect(deepLinkUrl);
-//   } catch (error) {
-//       console.error('Error processing request:', error);
-//       res.status(500).send('Failed to process request');
-//   }
-// });
 
 const { v4: uuidv4 } = require('uuid');
 
@@ -277,7 +210,7 @@ app.post('/login', async (req, res) => {
 
 
 //Create a new calendar for the user
-app.post('/calendars/:userId/', apiKeyMiddleware, async (req, res) => {
+app.post('/calendars/users/:userId/', apiKeyMiddleware, async (req, res) => {
   const userId = req.params.userId;
 
   try {
@@ -297,10 +230,8 @@ app.post('/calendars/:userId/', apiKeyMiddleware, async (req, res) => {
     // If no calendar exists, proceed to create a new one
     const [insertResult] = await pool.query('INSERT INTO calendars (userId) VALUES (?)', [userId]);
 
-    // Retrieve the new calendar ID
     const calendarId = insertResult.insertId;
 
-    // Respond with the success message and the new calendar's ID
     res.status(201).json({
       message: "Calendar created successfully",
       calendarId: calendarId,
@@ -317,24 +248,23 @@ app.post('/calendars/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 // Insere um novo evento no calendário do usuário
-app.post('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
+app.post('/calendars/events/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   const { eventId, summary, location, description, start, end, timeZone, obs } = req.body;
 
   try {
     const pool = db.getPool();
 
-    // Check if the provided event ID already exists
-    const checkId = await pool.query('SELECT id FROM events WHERE id = ?', [eventId]);
+    // Check if the provided event ID already exists in the same calendar
+    const checkId = await pool.query('SELECT id FROM events WHERE id = ? AND calendarId = ?', [eventId, calendarId]);
     if (checkId[0].length > 0) {
-      return res.status(409).json({ message: "Event ID already exists" });
+      return res.status(409).json({ message: "Event ID already exists in this calendar" });
     }
 
     // Convert date times to MySQL datetime format 
     const formatStart = moment(start).format('YYYY-MM-DD HH:mm:ss');
     const formatEnd = moment(end).format('YYYY-MM-DD HH:mm:ss');
 
-    // Insert the event with the provided ID
     const query = 'INSERT INTO events (id, calendarId, summary, location, description, startDateTime, endDateTime, timeZone, obs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
     const values = [eventId, calendarId, summary, location, description, formatStart, formatEnd, timeZone, obs || null];
 
@@ -345,6 +275,7 @@ app.post('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     res.status(500).send('Failed to process request');
   }
 });
+
 
 
 function normalizeString(input) {
@@ -366,19 +297,16 @@ app.get('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
     }
 
     if (startDate) {
-      // Include time in the comparison
       const formattedStartDate = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
       query += ' AND startDateTime = ?';
       queryParams.push(formattedStartDate);
     }
     if (beforeDate) {
-      // Include time in the comparison
       const formattedBeforeDate = moment(beforeDate).format('YYYY-MM-DD HH:mm:ss');
       query += ' AND endDateTime <= ?';
       queryParams.push(formattedBeforeDate);
     }
     if (afterDate) {
-      // Include time in the comparison
       const formattedAfterDate = moment(afterDate).format('YYYY-MM-DD HH:mm:ss');
       query += ' AND startDateTime >= ?';
       queryParams.push(formattedAfterDate);
@@ -429,7 +357,6 @@ app.patch('/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) 
       return res.status(404).send(`Event not found in the user's calendar.`);
     }
 
-    // Proceed to update the event with the provided details
     const updateParameters = [summary, location, description, formattedStart, formattedEnd, timeZone, ...parameters];
     await pool.query(
       `UPDATE events SET summary = ?, location = ?, description = ?, startDateTime = ?, endDateTime = ?, timeZone = ? WHERE ${condition}`,
@@ -453,12 +380,10 @@ app.delete('/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res)
   try {
     const pool = db.getPool();
 
-    // Prepare and execute the DELETE query
     const query = 'DELETE FROM events WHERE id = ? AND calendarId = ?';
     const values = [eventId, calendarId];
     const [result] = await pool.query(query, values);
 
-    // Check if the DELETE operation affected any rows
     if (result.affectedRows === 0) {
       return res.status(404).send('Event not found in the calendar.');
     }

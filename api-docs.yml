@@ -75,7 +75,7 @@ paths:
           description: Internal server error.
 
 
-  /calendars/{calendarId}/:
+  /calendars/events/{calendarId}/:
     post:
       tags:
       - Service Endpoint
@@ -144,6 +144,8 @@ paths:
           description: Calendar not found for the given user ID.
         '500':
           description: Failed to process request.
+
+  /calendars/{calendarId}/:
 
     get:
       tags:
