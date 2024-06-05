@@ -1,4 +1,4 @@
-const db = require('./database/database'); // Ensure this is correctly set up to use mysql2/promise
+const db = require('./database/database'); 
 
 async function findOrCreateUser({ googleId, email, name }) {
     let query = 'SELECT * FROM users WHERE google_id = ?';
@@ -24,7 +24,7 @@ async function findOrCreateUser({ googleId, email, name }) {
 }
 
 async function saveUserTokens({userId, accessToken, refreshToken, tokenExpiry, calendarId}) {
-    // Verifica se já existe um registro para o mesmo userId
+
     let query = 'SELECT * FROM storeDB WHERE user_id = ?';
     try {
         const pool = db.getPool();

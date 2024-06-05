@@ -223,7 +223,7 @@ app.post('/calendars/users/:userId/', apiKeyMiddleware, async (req, res) => {
       // If a calendar exists, return the existing calendar ID
       return res.status(200).json({
         message: "User already has a calendar.",
-        calendarId: existingCalendars[0].id  // Assuming the first entry is the relevant one
+        calendarId: existingCalendars[0].id  
       });
     }
 
@@ -247,7 +247,7 @@ app.post('/calendars/users/:userId/', apiKeyMiddleware, async (req, res) => {
 
 
 
-// Insere um novo evento no calendário do usuário
+// Insere um novo evento no calendário 
 app.post('/calendars/events/:calendarId/', apiKeyMiddleware, async (req, res) => {
   const { calendarId } = req.params;
   const { eventId, summary, location, description, start, end, timeZone, obs } = req.body;
@@ -261,7 +261,6 @@ app.post('/calendars/events/:calendarId/', apiKeyMiddleware, async (req, res) =>
       return res.status(409).json({ message: "Event ID already exists in this calendar" });
     }
 
-    // Convert date times to MySQL datetime format 
     const formatStart = moment(start).format('YYYY-MM-DD HH:mm:ss');
     const formatEnd = moment(end).format('YYYY-MM-DD HH:mm:ss');
 
@@ -279,7 +278,7 @@ app.post('/calendars/events/:calendarId/', apiKeyMiddleware, async (req, res) =>
 
 
 function normalizeString(input) {
-  return input.toLowerCase().replace(/[\s,]+/g, ''); // Remove espaços e vírgulas e converte para minúsculas
+  return input.toLowerCase().replace(/[\s,]+/g, ''); 
 }
 
 app.get('/calendars/:calendarId/', apiKeyMiddleware, async (req, res) => {
@@ -343,13 +342,12 @@ app.patch('/calendars/:calendarId/:eventId', apiKeyMiddleware, async (req, res) 
 
   try {
     const pool = db.getPool();
-    // Format dates using Moment.js to ensure they are in MySQL datetime format
     const formattedStart = moment(start).format('YYYY-MM-DD HH:mm:ss');
     const formattedEnd = moment(end).format('YYYY-MM-DD HH:mm:ss');
 
     // Prepare SQL query conditions and parameters
     let condition = 'id = ? AND calendarId = ?';
-    let parameters = [eventId, calendarId]; // Setup parameters with eventId first as per SQL condition
+    let parameters = [eventId, calendarId]; 
 
     // Check if the event exists in the user's calendar
     const [eventResult] = await pool.query(`SELECT id FROM events WHERE ${condition}`, parameters);
